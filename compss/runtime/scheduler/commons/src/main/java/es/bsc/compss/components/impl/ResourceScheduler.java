@@ -55,6 +55,9 @@ public class ResourceScheduler<T extends WorkerResourceDescription> {
     protected static final Logger LOGGER = LogManager.getLogger(Loggers.TS_COMP);
     protected static final boolean DEBUG = LOGGER.isDebugEnabled();
 
+    // Identifier of the only application that can use the resource
+    private final Long assignedAppId;
+
     // Task running in the resource
     private final List<AllocatableAction> running;
     // Task without enough resources to be executed right now
@@ -75,10 +78,12 @@ public class ResourceScheduler<T extends WorkerResourceDescription> {
      * Constructs a new Resource Scheduler associated to the worker {@code w}.
      *
      * @param w Associated worker.
+     * @param appId Id of the application whose tasks can use the resources
      * @param defaultResource JSON description of the resource.
      * @param defaultImplementations JSON description of the implementations.
      */
-    public ResourceScheduler(Worker<T> w, JSONObject defaultResource, JSONObject defaultImplementations) {
+    public ResourceScheduler(Worker<T> w, Long appId, JSONObject defaultResource, JSONObject defaultImplementations) {
+        this.assignedAppId = appId;
         this.running = new LinkedList<>();
         this.blocked = new PriorityQueue<>(20, new Comparator<AllocatableAction>() {
 
@@ -118,6 +123,15 @@ public class ResourceScheduler<T extends WorkerResourceDescription> {
      */
     public final String getName() {
         return this.myWorker.getName();
+    }
+
+    /**
+     * Returns the id of the only application whose tasks can run on the resource.
+     *
+     * @return id of the only application whose tasks can run on the resource
+     */
+    public Long getAssignedAppId() {
+        return this.assignedAppId;
     }
 
     /**

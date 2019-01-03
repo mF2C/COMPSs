@@ -85,13 +85,14 @@ public class MOResourceScheduler<T extends WorkerResourceDescription> extends Re
      * Creates a new MOResourceScheduler instance.
      * 
      * @param w Associated worker.
+     * @param appId Id of the application whose tasks can use the resource.
      * @param resourceJSON Worker JSON resource description.
      * @param implsJSON Implementation JSON description.
      */
-    public MOResourceScheduler(Worker<T> w, JSONObject resourceJSON, JSONObject implsJSON) {
-        super(w, resourceJSON, implsJSON);
+    public MOResourceScheduler(Worker<T> w, Long appId, JSONObject resourceJSON, JSONObject implsJSON) {
+        super(w, appId, resourceJSON, implsJSON);
 
-        this.gaps = new LinkedList<>();
+        gaps = new LinkedList<>();
         addGap(new Gap(Long.MIN_VALUE, Long.MAX_VALUE, null, myWorker.getDescription().copy(), 0));
         this.implementationsCount = new int[CoreManager.getCoreCount()][];
         this.runningImplementationsCount = new int[CoreManager.getCoreCount()][];

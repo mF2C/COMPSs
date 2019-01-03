@@ -18,12 +18,40 @@ package es.bsc.compss.types;
 
 import es.bsc.compss.api.TaskMonitor;
 import es.bsc.compss.types.annotations.parameter.DataType;
+import java.util.HashMap;
 
 
 public class DoNothingTaskMonitor implements TaskMonitor {
 
+    private static final HashMap<Long, TaskMonitor> parentMonitor = new HashMap<>();
+
+
+    public static void registerParent(long tasksAppId, TaskMonitor monitor) {
+        parentMonitor.put(tasksAppId, monitor);
+    }
+
+    public static void removeParent(long taskAppId) {
+        parentMonitor.remove(taskAppId);
+    }
+
+
+    private long appId;
+    private int taskId;
+    private Integer coreId;
+
+    private long startTime;
+    private long endTime;
+
+
     @Override
-    public void onCreation() {
+    public void onCreation(long appId, int taskId, Integer coreId) {
+        this.appId = appId;
+        this.taskId = taskId;
+        this.coreId = coreId;
+
+        TaskMonitor monitor = parentMonitor.get(appId);
+        System.out.println("New subtask (" + coreId + ") with id " + taskId + " created for app " + appId);
+        monitor.onProgress(new ChildTaskCreated(taskId, coreId));
     }
 
     @Override
@@ -36,6 +64,12 @@ public class DoNothingTaskMonitor implements TaskMonitor {
 
     @Override
     public void onSubmission() {
+        System.out.println("Subtask (" + coreId + ") with id " + taskId + " submitted for app " + appId);
+        startTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public void onProgress(ProgressUpdate update) {
     }
 
     @Override
@@ -56,6 +90,7 @@ public class DoNothingTaskMonitor implements TaskMonitor {
 
     @Override
     public void onSuccesfulExecution() {
+        endTime = System.currentTimeMillis();
     }
 
     @Override
@@ -64,10 +99,16 @@ public class DoNothingTaskMonitor implements TaskMonitor {
 
     @Override
     public void onCompletion() {
+        TaskMonitor monitor = parentMonitor.get(appId);
+        System.out.println("Subtask (" + coreId + ") with id " + taskId + " completed for app " + appId);
+        monitor.onProgress(new ChildTaskCompleted(taskId, coreId, endTime - startTime));
     }
 
     @Override
     public void onFailure() {
+        TaskMonitor monitor = parentMonitor.get(appId);
+        System.out.println("Subtask (" + coreId + ") with id " + taskId + " failed for app " + appId);
+        monitor.onProgress(new ChildTaskCompleted(taskId, coreId, null));
     }
 
     @Override

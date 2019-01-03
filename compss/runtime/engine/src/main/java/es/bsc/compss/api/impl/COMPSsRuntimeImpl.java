@@ -735,7 +735,7 @@ public class COMPSsRuntimeImpl implements COMPSsRuntime, LoaderAPI, FatalErrorHa
         int numReturns = hasReturn ? 1 : 0;
 
         if (monitor == null) {
-            monitor = DO_NOTHING_MONITOR;
+            monitor = new DoNothingTaskMonitor();
         }
 
         // Register the task
@@ -807,7 +807,7 @@ public class COMPSsRuntimeImpl implements COMPSsRuntime, LoaderAPI, FatalErrorHa
         }
 
         if (monitor == null) {
-            monitor = DO_NOTHING_MONITOR;
+            monitor = new DoNothingTaskMonitor();
         }
 
         if (lang == null) {
@@ -844,6 +844,9 @@ public class COMPSsRuntimeImpl implements COMPSsRuntime, LoaderAPI, FatalErrorHa
         return hasReturn;
     }
 
+    /**
+     * Notifies the Runtime that there are no more tasks created by the current appId.
+     */
     @Override
     public void noMoreTasks(Long appId) {
         if (Tracer.extraeEnabled()) {

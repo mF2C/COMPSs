@@ -38,11 +38,12 @@ public class LIFOResourceScheduler<T extends WorkerResourceDescription> extends 
      * New LIFO Resource Scheduler instance.
      *
      * @param w Associated worker.
+     * @param appId Id of the application whose tasks can use the resource
      * @param resJSON Worker JSON description.
      * @param implJSON Implementation JSON description.
      */
-    public LIFOResourceScheduler(Worker<T> w, JSONObject resJSON, JSONObject implJSON) {
-        super(w, resJSON, implJSON);
+    public LIFOResourceScheduler(Worker<T> w, Long appId, JSONObject resJSON, JSONObject implJSON) {
+        super(w, appId, resJSON, implJSON);
     }
 
     /*

@@ -63,8 +63,13 @@
         <maven-clean-plugin.version>3.1.0</maven-clean-plugin.version>
         <maven-war-plugin.version>3.2.3</maven-war-plugin.version>
         <tomcat7-maven-plugin.version>2.1</tomcat7-maven-plugin.version>
+
         <maven-jaxb2-plugin.version>0.14.0</maven-jaxb2-plugin.version>
         <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+
+        <!-- REST services clients  -->
+        <jersey.version>2.26</jersey.version>
+        <jetty.version>9.4.3.v20170317</jetty.version>
 
         <!-- Project encoding -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -194,6 +199,8 @@
         <module>compss</module>
         <module>tests/sources</module>
         <module>utils/storage</module>
+	<module>utils/mf2c</module>
         <module>performance_analysis/auto-cbm</module>
     </modules>
+
 </project>

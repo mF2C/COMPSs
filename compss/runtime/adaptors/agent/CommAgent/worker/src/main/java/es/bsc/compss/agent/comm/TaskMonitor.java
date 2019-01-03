@@ -106,16 +106,16 @@ class TaskMonitor extends PrintMonitor {
     }
 
     @Override
-    public void onCompletion() {
-        super.onCompletion();
+    public void completed() {
+        super.completed();
         if (this.orchestrator != null) {
             notifyEnd();
         }
     }
 
     @Override
-    public void onFailure() {
-        super.onFailure();
+    public void failed() {
+        super.failed();
         if (this.orchestrator != null) {
             notifyEnd();
         }

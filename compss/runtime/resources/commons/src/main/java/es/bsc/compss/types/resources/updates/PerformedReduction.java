@@ -21,8 +21,8 @@ import es.bsc.compss.types.resources.WorkerResourceDescription;
 
 public class PerformedReduction<T extends WorkerResourceDescription> extends ResourceUpdate<T> {
 
-    public PerformedReduction(T reduction) {
-        super(reduction);
+    public PerformedReduction(T reduction, Long appId) {
+        super(reduction, appId);
     }
 
     @Override

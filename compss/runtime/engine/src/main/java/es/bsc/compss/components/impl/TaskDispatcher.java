@@ -111,7 +111,7 @@ public class TaskDispatcher implements Runnable, ResourceUser, ActionOrchestrato
         // Insert workers
         for (Worker<?> worker : ResourceManager.getStaticResources()) {
             Worker<A> w = (Worker<A>) worker;
-            scheduler.updateWorker(w, new PerformedIncrease<A>(w.getDescription()));
+            scheduler.updateWorker(w, new PerformedIncrease<A>(w.getDescription(), null));
         }
 
         keepGoing = true;

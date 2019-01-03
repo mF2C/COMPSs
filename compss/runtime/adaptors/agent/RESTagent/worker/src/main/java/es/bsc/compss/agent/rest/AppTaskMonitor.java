@@ -30,6 +30,7 @@ import es.bsc.compss.util.ErrorManager;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -37,9 +38,6 @@ import org.glassfish.jersey.client.ClientConfig;
 import storage.StubItf;
 
 
-/**
- * Class handling the status changes for a task and the corresponding notifications to its orchestrator.
- */
 public class AppTaskMonitor extends AppMonitor {
 
     private static final Client CLIENT = ClientBuilder.newClient(new ClientConfig());
@@ -65,7 +63,7 @@ public class AppTaskMonitor extends AppMonitor {
     }
 
     @Override
-    public void onCreation() {
+    public void onCreation(long appId, int taskId, Integer coreId) {
     }
 
     @Override
@@ -81,7 +79,13 @@ public class AppTaskMonitor extends AppMonitor {
     }
 
     @Override
+    public void onProgress(ProgressUpdate update) {
+    }
+
+    @Override
     public void valueGenerated(int paramId, String paramName, DataType paramType, String dataId, Object dataLocation) {
+        ErrorManager
+            .warn("Value generated for param " + paramId + " of type " + paramType + " with name " + dataId + "");
         this.paramTypes[paramId] = paramType;
         if (paramType == DataType.OBJECT_T) {
             LogicalData ld = Comm.getData(dataId);
@@ -129,7 +133,7 @@ public class AppTaskMonitor extends AppMonitor {
     }
 
     @Override
-    public void onCompletion() {
+    public void completed() {
         if (this.orchestrator != null) {
             String masterId = this.orchestrator.getHost();
             String operation = this.orchestrator.getOperation();
@@ -138,7 +142,6 @@ public class AppTaskMonitor extends AppMonitor {
             EndApplicationNotification ean = new EndApplicationNotification("" + getAppId(),
                 this.successful ? JobEndStatus.OK : JobEndStatus.EXECUTION_FAILED, this.paramTypes,
                 this.paramLocations);
-
             Response response = wt.request(MediaType.APPLICATION_JSON).put(Entity.xml(ean), Response.class);
             if (response.getStatusInfo().getStatusCode() != 200) {
                 ErrorManager.warn("AGENT Could not notify Application " + getAppId() + " end to " + wt);
@@ -147,7 +150,8 @@ public class AppTaskMonitor extends AppMonitor {
     }
 
     @Override
-    public void onFailure() {
+    public void failed() {
 
     }
+
 }

@@ -157,7 +157,6 @@ public class DynamicMethodWorker extends MethodWorker {
                                 this.toRemove.reduce(pRed.getModification());
                             }
                             // Reduction is done, release sem
-                            LOGGER.debug("Releasing cloud resource " + this.getName());
                             pRed.notifyCompletion();
                             prIt.remove();
                         } else {
@@ -187,7 +186,6 @@ public class DynamicMethodWorker extends MethodWorker {
         }
         synchronized (this.available) {
             if (!hasAvailable(reduction) && this.getUsedCPUTaskCount() > 0) {
-
                 // This resource is still running tasks. Wait for them to finish...
                 // Mark to remove and enqueue pending reduction
                 LOGGER.debug("Resource in use. Adding pending reduction");

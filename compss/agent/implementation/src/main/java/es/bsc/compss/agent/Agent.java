@@ -29,9 +29,8 @@ import es.bsc.compss.loader.total.ObjectRegistry;
 import es.bsc.compss.loader.total.StreamRegistry;
 import es.bsc.compss.log.Loggers;
 import es.bsc.compss.types.COMPSsNode;
-
+import es.bsc.compss.types.COMPSsWorker;
 import es.bsc.compss.types.CoreElementDefinition;
-
 import es.bsc.compss.types.annotations.parameter.DataType;
 import es.bsc.compss.types.annotations.parameter.Direction;
 import es.bsc.compss.types.annotations.parameter.OnFailure;
@@ -50,8 +49,11 @@ import es.bsc.compss.util.ErrorManager;
 import es.bsc.compss.util.ResourceManager;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +75,7 @@ public class Agent {
     private static final String LOADER_SIGNATURE = LOADER_METHOD_NAME + LOADER_PARAMS;
 
     private static final String AGENT_NAME;
+    private static final String LOCAL_ADAPTOR = "es.bsc.compss.adaptors.local.LocalAdaptor";
 
     private static final COMPSsRuntimeImpl RUNTIME;
 
@@ -143,115 +146,152 @@ public class Agent {
      * @param arguments Task arguments.
      * @param target Target object of the task.
      * @param results Results of the task.
+     * @param resources Resouces available to run the execution
      * @param monitor Monitor to notify changes on the method execution.
      * @return Identifier of the application associated to the main task
      * @throws AgentException error parsing the CEI
      */
     public static long runMain(Lang lang, String ceiClass, String className, String methodName,
         ApplicationParameter[] arguments, ApplicationParameter target, ApplicationParameter[] results,
-        AppMonitor monitor) throws AgentException {
+        Resource[] resources, AppMonitor monitor) throws AgentException {
 
-        long appId = Math.abs(APP_ID_GENERATOR.nextLong());
+        long tasksAppId = Math.abs(APP_ID_GENERATOR.nextLong());
         long mainAppId = Math.abs(APP_ID_GENERATOR.nextLong());
         monitor.setAppId(mainAppId);
+        monitor.setTaskAppId(tasksAppId);
 
+        System.out.println("Received execution of " + className + "." + methodName + " on resources ");
+        for (Resource r : resources) {
+            System.out.println("\t" + r.getName());
+            System.out.println("\t\t Adaptor: " + r.getAdaptor());
+            System.out.println("\t\t Project: " + r.getProjectConf());
+            es.bsc.compss.types.resources.jaxb.ResourcesExternalAdaptorProperties res;
+            res = (es.bsc.compss.types.resources.jaxb.ResourcesExternalAdaptorProperties) r.getResourceConf();
+            System.out.println("\t\t Resources: " + res);
+            System.out.println("\t\t\t Properties:");
+            for (es.bsc.compss.types.resources.jaxb.ResourcesPropertyAdaptorType prop : res.getProperty()) {
+                System.out.println("\t\t\t\t * " + prop.getName() + " -> " + prop.getValue());
+            }
+
+        }
+
+        // Adding Resources
+        DynamicMethodWorker masterNode = null;
         try {
-            int taskParamsCount = arguments.length;
-            if (target != null) {
-                taskParamsCount++;
-            }
-            taskParamsCount += results.length;
-            int loadParamsCount = 7;
-            int totalParamsCount = taskParamsCount + loadParamsCount;
-            Object[] params = new Object[6 * totalParamsCount];
-
-            Object[] loadParams = new Object[] { RUNTIME,
-                DataType.OBJECT_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "runtime", // Runtime API
-                RUNTIME,
-                DataType.OBJECT_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "api", // Loader API
-                ceiClass,
-                DataType.STRING_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "ceiClass", // CEI
-                appId,
-                DataType.LONG_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "appId", // Nested tasks App ID
-                className,
-                DataType.STRING_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "className", // Class name
-                methodName,
-                DataType.STRING_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "methodName", // Method name
-                /*
-                 * When passing a single parameter with array type to the loaded method, the Object... parameter of the
-                 * load method assumes that each element of the array is a different parameter ( any array matches
-                 * Object...). To avoid it, we add a phantom basic-type parameter that avoids any data transfer and
-                 * ensures that the array is detected as the second parameter -- Object... is resolved as [ Integer,
-                 * array].
-                 */
-                3,
-                DataType.INT_T,
-                Direction.IN,
-                StdIOStream.UNSPECIFIED,
-                "",
-                "fakeParam", // Fake param
-            };
-
-            System.arraycopy(loadParams, 0, params, 0, loadParams.length);
-            int position = loadParams.length;
-            for (ApplicationParameter param : arguments) {
-                LOGGER.debug("\t Parameter:" + param.getParamName());
-                addParameterToTaskArguments(param, position, params);
-                position += 6;
-            }
-
-            if (target != null) {
-                LOGGER.debug("\t Target:" + target.getParamName());
-                addParameterToTaskArguments(target, position, params);
-                position += 6;
-            }
-
-            for (ApplicationParameter param : results) {
-                params[position] = new Object();
-                params[position + 1] = param.getType();
-                params[position + 2] = param.getDirection();
-                params[position + 3] = param.getStdIOStream();
-                params[position + 4] = param.getPrefix();
-                params[position + 5] = param.getParamName();
-                position += 6;
-            }
-
-            RUNTIME.executeTask(mainAppId, // Task application ID
-                monitor, // Corresponding task monitor
-                lang, // language of the task
-                true, LOADER_CLASS_NAME, LOADER_METHOD_NAME, LOADER_SIGNATURE + LOADER_CLASS_NAME, // Method to run
-                OnFailure.RETRY, // On failure behavior
-                0, // Time out of the task
-                false, 1, false, false, // Scheduler hints
-                false, null, totalParamsCount, // Parameters information
-                params // Argument values
-            );
+            System.out.println("Adding master node ...");
+            masterNode = addMasterNode(mainAppId, resources, monitor);
         } catch (Exception e) {
-            throw new AgentException(e);
+            e.printStackTrace();
+            throw new AgentException("Error creating master.", e);
+        }
+
+        if (masterNode == null) {
+            System.out.println("Must forward request to one of the nodes");
+        } else {
+            System.out.println("Adding worker nodes ...");
+            try {
+                addWorkerNodes(tasksAppId, resources, monitor);
+            } catch (Exception e) {
+                throw new AgentException("Error creating worker.", e);
+            }
+            try {
+                int taskParamsCount = arguments.length;
+                if (target != null) {
+                    taskParamsCount++;
+                }
+                taskParamsCount += results.length;
+                int loadParamsCount = 7;
+                int totalParamsCount = taskParamsCount + loadParamsCount;
+                Object[] params = new Object[6 * totalParamsCount];
+
+                Object[] loadParams = new Object[] { RUNTIME,
+                    DataType.OBJECT_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "runtime", // Runtime API
+                    RUNTIME,
+                    DataType.OBJECT_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "api", // Loader API
+                    ceiClass,
+                    DataType.STRING_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "ceiClass", // CEI
+                    tasksAppId,
+                    DataType.LONG_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "appId", // Nested tasks App ID
+                    className,
+                    DataType.STRING_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "className", // Class name
+                    methodName,
+                    DataType.STRING_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "methodName", // Method name
+                    /*
+                     * When passing a single parameter with array type to the loaded method, the Object... parameter of
+                     * the load method assumes that each element of the array is a different parameter ( any array
+                     * matches Object...). To avoid it, we add a phantom basic-type parameter that avoids any data
+                     * transfer and ensures that the array is detected as the second parameter -- Object... is resolved
+                     * as [ Integer, array].
+                     */
+                    3,
+                    DataType.INT_T,
+                    Direction.IN,
+                    StdIOStream.UNSPECIFIED,
+                    "",
+                    "fakeParam", // Fake param
+                };
+
+                System.arraycopy(loadParams, 0, params, 0, loadParams.length);
+                int position = loadParams.length;
+                for (ApplicationParameter param : arguments) {
+                    LOGGER.debug("\t Parameter:" + param.getParamName());
+                    addParameterToTaskArguments(param, position, params);
+                    position += 6;
+                }
+
+                if (target != null) {
+                    LOGGER.debug("\t Target:" + target.getParamName());
+                    addParameterToTaskArguments(target, position, params);
+                    position += 6;
+                }
+
+                for (ApplicationParameter param : results) {
+                    params[position] = new Object();
+                    params[position + 1] = param.getType();
+                    params[position + 2] = param.getDirection();
+                    params[position + 3] = param.getStdIOStream();
+                    params[position + 4] = param.getPrefix();
+                    params[position + 5] = param.getParamName();
+                    position += 6;
+                }
+
+                RUNTIME.executeTask(mainAppId, // Task application ID
+                    monitor, // Corresponding task monitor
+                    lang, // language of the task
+                    true, LOADER_CLASS_NAME, LOADER_METHOD_NAME, LOADER_SIGNATURE + LOADER_CLASS_NAME, // Method to run
+                    OnFailure.RETRY, // On failure behavior
+                    0, // Time out of the task
+                    false, 1, false, false, // Scheduler hints
+                    false, null, totalParamsCount, // Parameters information
+                    params // Argument values
+                );
+            } catch (Exception e) {
+                throw new AgentException(e);
+            }
         }
         return mainAppId;
     }
@@ -265,6 +305,7 @@ public class Agent {
      * @param arguments paramter description of the task's arguments
      * @param target paramter description of the task's callee
      * @param results paramter description of the task's results
+     * @param resources resources available to run the task
      * @param requirements requirements to run the task
      * @param monitor monitor to notify changes on the method execution
      * @return Identifier of the application associated to the task
@@ -272,7 +313,7 @@ public class Agent {
      */
     public static long runTask(Lang lang, String className, String methodName, ApplicationParameter[] arguments,
         ApplicationParameter target, ApplicationParameter[] results, MethodResourceDescription requirements,
-        AppMonitor monitor) throws AgentException {
+        Resource[] resources, AppMonitor monitor) throws AgentException {
         System.out.println("");
         System.out.println("");
         System.out.println("");
@@ -294,6 +335,12 @@ public class Agent {
 
         monitor.setAppId(appId);
         try {
+            System.out.println("Running Task " + appId);
+            try {
+                addWorkerNodes(appId, resources, monitor);
+            } catch (Exception e) {
+                throw new AgentException("Error creating worker.", e);
+            }
             // PREPARING PARAMETERS
             StringBuilder typesSB = new StringBuilder();
 
@@ -407,7 +454,7 @@ public class Agent {
                     projectConf.put("Properties", r.getProjectConf());
                     Map<String, Object> resourcesConf = new HashMap<>();
                     resourcesConf.put("Properties", r.getResourceConf());
-                    host = registerWorker(workerName, mrd, adaptor, projectConf, resourcesConf);
+                    host = registerWorker(null, workerName, mrd, adaptor, projectConf, resourcesConf);
                 } else {
                     if (host == Comm.getAppHost()) {
                         LogicalData localData = Comm.getData(uri.getPath());
@@ -448,13 +495,31 @@ public class Agent {
      * Adds new resources into the resource pool.
      *
      * @param r Description of the resources to add into the resource pool
+     * @param appId ApplicationId of the tasks that can use such resources
      * @throws AgentException could not create a configuration to start using this resource
      */
-    public static void addResources(Resource<?, ?> r) throws AgentException {
+    public static void addResources(Resource r, Long appId) throws AgentException {
+        Long resourceAppId = null;
+        AppMonitor monitor = null;
+        if (appId != null) {
+            monitor = AppMonitor.getMonitorForApp(appId);
+            if (monitor == null) {
+                throw new AgentException("Unknown application " + appId);
+            }
+            resourceAppId = monitor.getTaskAppId();
+            if (resourceAppId == null) {
+                resourceAppId = appId;
+            }
+        }
+        addResources(r, resourceAppId, monitor);
+    }
+
+    private static DynamicMethodWorker addResources(Resource r, Long appId, AppMonitor monitor) throws AgentException {
+        System.out.println("Adding Resource " + r.getName() + " for application " + appId);
         String workerName = r.getName();
         MethodResourceDescription description = r.getDescription();
 
-        DynamicMethodWorker worker = ResourceManager.getDynamicResource(workerName);
+        DynamicMethodWorker worker = ResourceManager.getDynamicResource(workerName + "_" + appId);
         if (worker != null) {
             ResourceManager.increasedDynamicWorker(worker, description);
         } else {
@@ -463,12 +528,19 @@ public class Agent {
             projectConf.put("Properties", r.getProjectConf());
             Map<String, Object> resourcesConf = new HashMap<>();
             resourcesConf.put("Properties", r.getResourceConf());
-            registerWorker(workerName, description, adaptor, projectConf, resourcesConf);
+            worker = registerWorker(appId, workerName, description, adaptor, projectConf, resourcesConf);
         }
+
+        if (monitor != null) {
+            monitor.addNode(worker);
+        }
+        return worker;
     }
 
-    private static DynamicMethodWorker registerWorker(String workerName, MethodResourceDescription description,
-        String adaptor, Map<String, Object> projectConf, Map<String, Object> resourcesConf) throws AgentException {
+    private static DynamicMethodWorker registerWorker(Long appId, String workerName,
+        MethodResourceDescription description, String adaptor, Map<String, Object> projectConf,
+        Map<String, Object> resourcesConf) throws AgentException {
+
         System.out.println("REGISTERING NEW WORKER with adaptor " + adaptor);
         if (description == null) {
             description = new MethodResourceDescription();
@@ -498,9 +570,84 @@ public class Agent {
 
         mc.setHost(workerName);
         DynamicMethodWorker worker;
-        worker = new DynamicMethodWorker(workerName, description, mc, new HashMap<>());
-        ResourceManager.addDynamicWorker(worker, description);
+        worker = new DynamicMethodWorker(workerName + "_" + appId, description, mc, new HashMap<>());
+        ResourceManager.addDynamicWorker(worker, description, appId);
         return worker;
+    }
+
+    private static DynamicMethodWorker addMasterNode(long mainAppId, Resource[] resources, AppMonitor monitor)
+        throws AgentException {
+        DynamicMethodWorker mw = null;
+        for (Resource r : resources) {
+            System.out.println("\t Checking Resource " + r.getName());
+            if (isMaster(r)) {
+                System.out.println("\t\t Is the local node.");
+                MethodResourceDescription mrd = r.getDescription();
+                List<Processor> processors = mrd.getProcessors();
+                Iterator<Processor> procsItr = processors.iterator();
+                while (procsItr.hasNext()) {
+                    Processor p = procsItr.next();
+                    if (p.isCPU()) {
+                        // Remove one CU from the Local resource
+                        int finalCUCount = p.getComputingUnits() - 1;
+                        if (finalCUCount == 0) {
+                            procsItr.remove();
+                        } else {
+                            p.setComputingUnits(p.getComputingUnits() - 1);
+                        }
+                        mrd.setProcessors(processors);
+
+                        // Create a new Worker for the main app
+                        Processor p2 = new Processor(p);
+                        p2.setComputingUnits(1);
+                        MethodResourceDescription masterDescription = new MethodResourceDescription();
+                        masterDescription.addProcessor(p2);
+
+                        Resource master = new Resource(r.getName(), masterDescription, LOCAL_ADAPTOR, null, null);
+                        mw = addLocalNode(master, mainAppId, monitor);
+                        break;
+                    }
+                }
+            } else {
+                System.out.println("\t\t Is not the local node");
+            }
+        }
+        return mw;
+    }
+
+    private static void addWorkerNodes(long appId, Resource[] resources, AppMonitor monitor) throws AgentException {
+        for (Resource r : resources) {
+            System.out.println("\tAdding " + r.getName());
+            // Update processorCounts
+            MethodResourceDescription desc = r.getDescription();
+            desc.setProcessors(desc.getProcessors());
+            if (r.getDescription().getTotalCPUComputingUnits() > 0) {
+                DynamicMethodWorker mw;
+                if (isMaster(r)) {
+                    mw = addLocalNode(r, appId, monitor);
+                } else {
+                    mw = addResources(r, appId, monitor);
+                }
+            }
+        }
+    }
+
+    private static DynamicMethodWorker addLocalNode(Resource r, Long appId, AppMonitor monitor) {
+        System.out.println("\t\t\t Adding LocalNode");
+        String workerName = r.getName();
+        MethodResourceDescription description = r.getDescription();
+
+        int limitCPUTasks = description.getTotalCPUComputingUnits();
+        int limitGPUTasks = description.getTotalGPUComputingUnits();
+        int limitFPGATasks = description.getTotalFPGAComputingUnits();
+        int limitOtherTasks = description.getTotalOTHERComputingUnits();
+        COMPSsWorker worker = (COMPSsWorker) Comm.getAppHost().getNode();
+        DynamicMethodWorker mw = new DynamicMethodWorker(workerName + "_" + appId, description, worker, limitCPUTasks,
+            limitGPUTasks, limitFPGATasks, limitOtherTasks, new HashMap<>());
+        worker.increaseComputingCapabilities(description);
+        ResourceManager.addDynamicWorker(mw, description, appId);
+        monitor.addNode(mw);
+        return mw;
     }
 
     /**
@@ -508,10 +655,26 @@ public class Agent {
      *
      * @param workerName name of the worker to whom the resources belong.
      * @param reduction description of the resources to stop using.
+     * @param appId applicationId associated to the resource
      * @throws AgentException the worker was not set up for the agent.
      */
-    public static void removeResources(String workerName, MethodResourceDescription reduction) throws AgentException {
-        DynamicMethodWorker worker = ResourceManager.getDynamicResource(workerName);
+    public static void removeResources(String workerName, MethodResourceDescription reduction, Long appId)
+        throws AgentException {
+        System.out.println("Removing Resource " + workerName + " for application " + appId);
+        Long resourceAppId = null;
+        AppMonitor monitor = null;
+        if (appId != null) {
+            monitor = AppMonitor.getMonitorForApp(appId);
+            if (monitor == null) {
+                throw new AgentException("Unknown application " + appId);
+            }
+            resourceAppId = monitor.getTaskAppId();
+            if (resourceAppId == null) {
+                resourceAppId = appId;
+            }
+        }
+
+        DynamicMethodWorker worker = ResourceManager.getDynamicResource(workerName + "_" + resourceAppId);
         if (worker != null) {
             ResourceManager.requestWorkerReduction(worker, reduction);
         } else {
@@ -523,11 +686,26 @@ public class Agent {
      * Request the agent to stop using all the resources from a node.
      *
      * @param workerName name of the worker to stop using
+     * @param appId applicationId associated to the resource
      * @throws AgentException the worker was not set up for the agent.
      */
-    public static void removeNode(String workerName) throws AgentException {
+    public static void removeNode(String workerName, Long appId) throws AgentException {
+        System.out.println("Removing Node " + workerName + " for application " + appId);
+        Long resourceAppId = null;
+        AppMonitor monitor = null;
+        if (appId != null) {
+            monitor = AppMonitor.getMonitorForApp(appId);
+            if (monitor == null) {
+                throw new AgentException("Unknown application " + appId);
+            }
+            resourceAppId = monitor.getTaskAppId();
+            if (resourceAppId == null) {
+                resourceAppId = appId;
+            }
+        }
+
         try {
-            ResourceManager.requestWholeWorkerReduction(workerName);
+            ResourceManager.requestWholeWorkerReduction(workerName + "_" + resourceAppId);
         } catch (NullPointerException e) {
             throw new AgentException("Resource " + workerName + " was not set up for this agent. Ignoring request.");
         }
@@ -537,11 +715,26 @@ public class Agent {
      * Forces the agent to remove a node with which it has lost the connection.
      *
      * @param workerName name of the worker to stop using
+     * @param appId applicationId associated to the resource
      * @throws AgentException the worker was not set up for the agent.
      */
-    public static void lostNode(String workerName) throws AgentException {
+    public static void lostNode(String workerName, Long appId) throws AgentException {
+        System.out.println("Removing Node " + workerName + " for application " + appId);
+        Long resourceAppId = null;
+        AppMonitor monitor = null;
+        if (appId != null) {
+            monitor = AppMonitor.getMonitorForApp(appId);
+            if (monitor == null) {
+                throw new AgentException("Unknown application " + appId);
+            }
+            resourceAppId = monitor.getTaskAppId();
+            if (resourceAppId == null) {
+                resourceAppId = appId;
+            }
+        }
+
         try {
-            ResourceManager.notifyWholeWorkerReduction(workerName);
+            ResourceManager.notifyWholeWorkerReduction(workerName + "_" + resourceAppId);
         } catch (NullPointerException e) {
             throw new AgentException("Resource " + workerName + " was not set up for this agent. Ignoring request.");
         }
@@ -571,6 +764,15 @@ public class Agent {
         Class<?> agentClass = Class.forName(className);
         AgentInterface<?> itf = (AgentInterface<?>) agentClass.newInstance();
         return itf.configure(arguments);
+    }
+
+    /**
+     * Returns the name of the Agent.
+     *
+     * @return name of the agent.
+     */
+    public static String getName() {
+        return AGENT_NAME;
     }
 
     /**
@@ -632,4 +834,21 @@ public class Agent {
         }
         start();
     }
+
+    private static boolean isMaster(Resource r) {
+        String name = r.getName();
+        String hostName = name;
+        try {
+            if (!hostName.contains("://")) {
+                hostName = "http://" + hostName;
+            }
+            URI u = new URI(hostName);
+            hostName = u.getHost();
+        } catch (URISyntaxException ex) {
+            hostName = name;
+        }
+
+        return (name.equals(AGENT_NAME) || hostName.equals(AGENT_NAME) || name.equals("localhost"));
+    }
+
 }

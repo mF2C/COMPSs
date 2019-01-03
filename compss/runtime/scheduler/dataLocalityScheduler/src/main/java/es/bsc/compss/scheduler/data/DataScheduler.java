@@ -49,9 +49,9 @@ public class DataScheduler extends ReadyScheduler {
      */
     @Override
     public <T extends WorkerResourceDescription> DataResourceScheduler<T> generateSchedulerForResource(Worker<T> w,
-        JSONObject resJSON, JSONObject implJSON) {
+        Long appId, JSONObject resJSON, JSONObject implJSON) {
         // LOGGER.debug("[DataScheduler] Generate scheduler for resource " + w.getName());
-        return new DataResourceScheduler<>(w, resJSON, implJSON);
+        return new DataResourceScheduler<>(w, appId, resJSON, implJSON);
     }
 
     @Override

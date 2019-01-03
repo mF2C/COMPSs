@@ -63,7 +63,11 @@ public class LogicalData {
     private static final String DBG_PREFIX = "[LogicalData] ";
     // Logical data name
     private final String name;
-    // Value in memory, null if value in disk
+
+    // Is value stored in Memory
+    private boolean inMemory;
+
+    // Value in memory
     private Object value;
     // Id if PSCO, null otherwise
     private String pscoId;
@@ -94,6 +98,7 @@ public class LogicalData {
      */
     public LogicalData(String name) {
         this.name = name;
+        this.inMemory = false;
         this.value = null;
         this.pscoId = null;
         this.bindingId = null;
@@ -226,7 +231,7 @@ public class LogicalData {
      * @return
      */
     public synchronized boolean isInMemory() {
-        return (this.value != null);
+        return this.inMemory;
     }
 
     /**
@@ -265,8 +270,10 @@ public class LogicalData {
             ErrorManager.error(DataLocation.ERROR_INVALID_LOCATION + " " + targetPath, e);
         }
 
-        Object val = this.value;
+        Object val;
+        val = this.value;
         this.value = null;
+        this.inMemory = false;
         // Removes only the memory location (no need to check private, shared,
         // persistent)
         this.locations.remove(loc);
@@ -281,6 +288,7 @@ public class LogicalData {
      */
     public synchronized void setValue(Object o) {
         this.value = o;
+        this.inMemory = true;
     }
 
     /**
@@ -377,9 +385,41 @@ public class LogicalData {
      */
     public synchronized void loadFromStorage() throws CannotLoadException {
         // TODO: Check if we have to do something in binding data??
-        if (value != null) {
+        if (inMemory) {
             // Value is already loaded in memory
             return;
+        }
+
+        if (this.pscoId != null) {
+            LOGGER.info("Data was on the persistent storage. Fetching it from there!");
+            if (Tracer.extraeEnabled()) {
+                Tracer.emitEvent(TraceEvent.STORAGE_GETBYID.getId(), TraceEvent.STORAGE_GETBYID.getType());
+            }
+            try {
+                this.value = StorageItf.getByID(pscoId);
+                inMemory = true;
+            } catch (StorageException se) {
+                // Check next location since cannot retrieve the object from the storage Back-end
+                ErrorManager.warn("Could not load the value from the persistent storage.", se);
+            } finally {
+                if (Tracer.extraeEnabled()) {
+                    Tracer.emitEvent(Tracer.EVENT_END, TraceEvent.STORAGE_GETBYID.getType());
+                }
+            }
+            if (inMemory) {
+                String targetPath = ProtocolType.OBJECT_URI.getSchema() + this.name;
+                SimpleURI uri = new SimpleURI(targetPath);
+                try {
+                    DataLocation tgtLoc = DataLocation.createLocation(Comm.getAppHost(), uri);
+                    addLocation(tgtLoc);
+                    return;
+                } catch (IOException e) {
+                    ErrorManager.warn("Could not register object location", e);
+                    // Check next location since location was invalid
+                    this.value = null;
+                    inMemory = false;
+                }
+            }
         }
 
         for (DataLocation loc : this.locations) {
@@ -396,6 +436,7 @@ public class LogicalData {
                     if (path.startsWith(File.separator)) {
                         try {
                             this.value = Serializer.deserialize(path);
+                            inMemory = true;
                         } catch (ClassNotFoundException | IOException e) {
                             // Check next location since deserialization was invalid
                             this.value = null;
@@ -416,35 +457,7 @@ public class LogicalData {
 
                     return;
                 case PERSISTENT:
-                    PersistentLocation pLoc = (PersistentLocation) loc;
-
-                    if (Tracer.extraeEnabled()) {
-                        Tracer.emitEvent(TraceEvent.STORAGE_GETBYID.getId(), TraceEvent.STORAGE_GETBYID.getType());
-                    }
-                    try {
-                        this.value = StorageItf.getByID(pLoc.getId());
-                        this.pscoId = pLoc.getId();
-                    } catch (StorageException se) {
-                        // Check next location since cannot retrieve the object from the storage Back-end
-                        continue;
-                    } finally {
-                        if (Tracer.extraeEnabled()) {
-                            Tracer.emitEvent(Tracer.EVENT_END, TraceEvent.STORAGE_GETBYID.getType());
-                        }
-                    }
-
-                    String targetPath = ProtocolType.OBJECT_URI.getSchema() + this.name;
-                    SimpleURI uri = new SimpleURI(targetPath);
-                    try {
-                        DataLocation tgtLoc = DataLocation.createLocation(Comm.getAppHost(), uri);
-                        addLocation(tgtLoc);
-                    } catch (IOException e) {
-                        // Check next location since location was invalid
-                        this.value = null;
-                        continue;
-                    }
-
-                    return;
+                    // Should already have been detected earlier
                 case BINDING:
                     // We should never reach this
                     throw new CannotLoadException("ERROR: Trying to load from storage a BINDING location");

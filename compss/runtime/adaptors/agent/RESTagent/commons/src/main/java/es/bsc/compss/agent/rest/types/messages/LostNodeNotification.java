@@ -23,13 +23,15 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class LostNodeNotification {
 
     private String workerName;
+    private Long appId;
 
 
     public LostNodeNotification() {
     }
 
-    public LostNodeNotification(String workerName) {
+    public LostNodeNotification(String workerName, Long appId) {
         this.workerName = workerName;
+        this.appId = appId;
     }
 
     public String getWorkerName() {
@@ -38,6 +40,14 @@ public class LostNodeNotification {
 
     public void setWorkerName(String workerName) {
         this.workerName = workerName;
+    }
+
+    public Long getAppId() {
+        return appId;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
     }
 
 }

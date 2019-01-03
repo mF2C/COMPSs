@@ -33,6 +33,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 public class IncreaseNodeNotification {
 
     private Resource<?, ?> resource;
+    private Long appId;
 
 
     public IncreaseNodeNotification() {
@@ -47,11 +48,13 @@ public class IncreaseNodeNotification {
      * @param adaptor Adaptor to interact with the node.
      * @param resourcesConf Resources.xml configuration for the node.
      * @param projectConf Project.xml configuration for the node.
+     * @param appId Id of the application whose tasks can use the resources
      */
     public IncreaseNodeNotification(String name, MethodResourceDescription mrd, String adaptor, Object resourcesConf,
-        Object projectConf) {
+        Object projectConf, Long appId) {
 
         this.resource = RESTResource.createResource(name, mrd, adaptor, resourcesConf, projectConf);
+        this.appId = appId;
     }
 
     public void setResource(Resource<?, ?> resource) {
@@ -62,6 +65,14 @@ public class IncreaseNodeNotification {
         @XmlElement(name = "nioResource", type = NIOAdaptorResource.class, required = false), })
     public Resource<?, ?> getResource() {
         return this.resource;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
+    }
+
+    public Long getAppId() {
+        return this.appId;
     }
 
 }

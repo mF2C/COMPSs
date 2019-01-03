@@ -185,6 +185,7 @@ public class RemoteRESTAgent extends COMPSsWorker {
                 ld.setPscoId(pscoId);
                 orderStorageCopy(new StorageCopy(ld, source, target, tgtData, reason, listener));
             } else {
+                System.out.println("Regular objects are not supported yet -> " + ld.getName());
                 listener.notifyFailure(new DeferredCopy(ld, source, target, tgtData, reason, listener),
                     new Exception("Regular objects are not supported yet"));
             }

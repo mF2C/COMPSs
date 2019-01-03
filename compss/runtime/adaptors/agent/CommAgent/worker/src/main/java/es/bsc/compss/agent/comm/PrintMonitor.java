@@ -26,7 +26,7 @@ public class PrintMonitor extends AppMonitor {
     }
 
     @Override
-    public void onCreation() {
+    public void onCreation(long appId, int taskId, Integer coreId) {
         System.out.println("Task created");
     }
 
@@ -43,6 +43,11 @@ public class PrintMonitor extends AppMonitor {
     @Override
     public void onSubmission() {
         System.out.println("Submitted");
+    }
+
+    @Override
+    public void onProgress(ProgressUpdate update) {
+        System.out.println("Progressing..." + update.toString());
     }
 
     @Override
@@ -77,12 +82,12 @@ public class PrintMonitor extends AppMonitor {
     }
 
     @Override
-    public void onCompletion() {
+    public void completed() {
         System.out.println("Completed");
     }
 
     @Override
-    public void onFailure() {
+    public void failed() {
         System.out.println("Failed!");
     }
 

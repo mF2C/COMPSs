@@ -49,10 +49,10 @@ public class MOScheduler extends TaskScheduler {
 
     @Override
     public <T extends WorkerResourceDescription> MOResourceScheduler<T> generateSchedulerForResource(Worker<T> w,
-        JSONObject res, JSONObject impls) {
+        Long appId, JSONObject res, JSONObject impls) {
 
         // LOGGER.debug("[LoadBalancingScheduler] Generate scheduler for resource " + w.getName());
-        return new MOResourceScheduler<>(w, res, impls);
+        return new MOResourceScheduler<>(w, appId, res, impls);
     }
 
     @Override

@@ -118,7 +118,7 @@ public class CommAgentImpl implements AgentInterface<CommAgentConfig>, CommAgent
     @Override
     public void addResources(Resource<?, ?> res) {
         try {
-            Agent.addResources(res);
+            Agent.addResources(res, null);
         } catch (AgentException ex) {
             ErrorManager.warn("Could not add the new server", ex);
         }
@@ -127,7 +127,7 @@ public class CommAgentImpl implements AgentInterface<CommAgentConfig>, CommAgent
     @Override
     public void removeResources(Resource<?, ?> resource) {
         try {
-            Agent.removeResources(resource.getName(), resource.getDescription());
+            Agent.removeResources(resource.getName(), resource.getDescription(), null);
         } catch (AgentException ae) {
             ae.printStackTrace();
         }
@@ -136,7 +136,7 @@ public class CommAgentImpl implements AgentInterface<CommAgentConfig>, CommAgent
     @Override
     public void removeNode(String node) {
         try {
-            Agent.removeNode(node);
+            Agent.removeNode(node, null);
         } catch (AgentException ae) {
             ae.printStackTrace();
         }
@@ -145,7 +145,7 @@ public class CommAgentImpl implements AgentInterface<CommAgentConfig>, CommAgent
     @Override
     public void lostNode(String node) {
         try {
-            Agent.lostNode(node);
+            Agent.lostNode(node, null);
         } catch (AgentException ae) {
             ae.printStackTrace();
         }
@@ -204,7 +204,7 @@ public class CommAgentImpl implements AgentInterface<CommAgentConfig>, CommAgent
         }
         System.out.println("La tasca reservarà " + requirements);
         try {
-            Agent.runMain(lang, ceiName, className, methodName, params, target, results, monitor);
+            Agent.runMain(lang, ceiName, className, methodName, params, target, results, new Resource[0], monitor);
         } catch (AgentException ex) {
             ex.printStackTrace();
         }
@@ -215,7 +215,7 @@ public class CommAgentImpl implements AgentInterface<CommAgentConfig>, CommAgent
         AppMonitor monitor) {
 
         try {
-            Agent.runTask(lang, className, methodName, params, target, results, requirements, monitor);
+            Agent.runTask(lang, className, methodName, params, target, results, requirements, new Resource[0], monitor);
         } catch (AgentException ex) {
             ex.printStackTrace();
         }

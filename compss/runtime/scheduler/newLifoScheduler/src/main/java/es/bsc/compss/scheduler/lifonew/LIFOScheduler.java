@@ -64,8 +64,9 @@ public class LIFOScheduler extends TaskScheduler {
      */
     @Override
     public <T extends WorkerResourceDescription> LIFOResourceScheduler<T> generateSchedulerForResource(Worker<T> w,
-        JSONObject resJSON, JSONObject implJSON) {
-        return new LIFOResourceScheduler<>(w, resJSON, implJSON);
+        Long appId, JSONObject resJSON, JSONObject implJSON) {
+        // LOGGER.info("[LIFOScheduler] Generate scheduler for resource " + w.getName());
+        return new LIFOResourceScheduler<>(w, appId, resJSON, implJSON);
     }
 
     @Override

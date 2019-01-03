@@ -1114,7 +1114,7 @@ public final class COMPSsMaster extends COMPSsWorker implements InvocationContex
     @Override
     public void shutdownExecutionManager(ExecutorShutdownListener sl) {
         // Should not be executed on a COMPSsMaster
-        this.executionManager.stop();
+        // this.executionManager.stop();
         sl.notifyEnd();
     }
 
@@ -1264,7 +1264,9 @@ public final class COMPSsMaster extends COMPSsWorker implements InvocationContex
     @Override
     public void loadParam(InvocationParam invParam) throws UnloadableValueException {
         LocalParameter localParam = (LocalParameter) invParam;
-
+        System.out.println("LOADING PARAMETER class" + localParam.getClass().getCanonicalName());
+        System.out.println("LOADING PARAMETER source dataMgmtId " + localParam.getSourceDataId());
+        System.out.println("LOADING PARAMETER target dataMgmtId " + localParam.getDataMgmtId());
         switch (localParam.getType()) {
             case FILE_T:
                 // No need to load anything. Value already on a file
@@ -1302,6 +1304,7 @@ public final class COMPSsMaster extends COMPSsWorker implements InvocationContex
 
     @Override
     public void storeParam(InvocationParam invParam) {
+        System.out.println("Storing Param " + invParam);
         LocalParameter localParam = (LocalParameter) invParam;
         Parameter param = localParam.getParam();
         switch (param.getType()) {
@@ -1313,7 +1316,9 @@ public final class COMPSsMaster extends COMPSsWorker implements InvocationContex
             case OBJECT_T:
             case STREAM_T:
                 String resultName = localParam.getDataMgmtId();
+                System.out.println("RESULT NAME = " + resultName);
                 LogicalData ld = Comm.getData(resultName);
+                System.out.println("LogicalData = " + ld);
                 ld.setValue(invParam.getValue());
                 break;
             case BINDING_OBJECT_T:

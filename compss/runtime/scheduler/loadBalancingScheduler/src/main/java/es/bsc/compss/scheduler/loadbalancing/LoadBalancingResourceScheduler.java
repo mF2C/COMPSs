@@ -45,8 +45,8 @@ public class LoadBalancingResourceScheduler<T extends WorkerResourceDescription>
      * @param resJSON Worker JSON description.
      * @param implJSON Implementation JSON description.
      */
-    public LoadBalancingResourceScheduler(Worker<T> w, JSONObject resJSON, JSONObject implJSON) {
-        super(w, resJSON, implJSON);
+    public LoadBalancingResourceScheduler(Worker<T> w, Long appId, JSONObject resJSON, JSONObject implJSON) {
+        super(w, appId, resJSON, implJSON);
     }
 
     /*

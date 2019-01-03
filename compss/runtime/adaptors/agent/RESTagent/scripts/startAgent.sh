@@ -4,6 +4,9 @@
 DEFAULT_AGENT_PORT=46100
 DEFAULT_DEBUG="off"
 
+#mF2C Options
+DEFAULT_REPORT_ADDRESS="NO_REPORT"
+
 #DataClay Options
 DC_CLASSPATH="$(for i in /opt/COMPSs/storage/lib/*.jar ; do echo -n ${i}: ; done)/opt/COMPSs/storage/dataclay.jar"
 DC_TOOL="java -Dorg.apache.logging.log4j.simplelog.StatusLogger.level=OFF -cp ${DC_CLASSPATH}"
@@ -14,6 +17,7 @@ DEFAULT_DC_USERNAME="AppUser"
 DEFAULT_DC_PASSWORD="AppPwd"
 DEFAULT_DC_DATASET="AppDS"
 DEFAULT_DC_NAMESPACE="AppNS"
+
 
 usage() {
 cat << EOF
@@ -26,6 +30,9 @@ Mandatory options:
 COMPSs options:  
   -p, --port                port on which the agent listens. Default value 46100
   -d, --debug               enables debug.
+
+mF2C options:
+  -r, --report_address      endpoint where to report app execution updates
 
 DataClay options:
   -DC, --no-dataclay        Disable DataClay  
@@ -83,6 +90,15 @@ parse_options() {
           exit
         fi
         DEBUG=$2;
+        shift 2;;
+
+      -r    | --report_address )
+        if [ "$#" -lt 2 ]; then
+          echo "Illegal number of params"
+          usage
+          exit
+        fi
+        REPORT_ADDRESS=$2;
         shift 2;;
 
       -DC | --no-dataclay )
@@ -159,18 +175,29 @@ parse_options() {
     usage
     exit
   fi
-    if [[ -z "${APPLICATION_PATH}" ]]; then
-      echo "ERROR! APPLICATION_PATH not set"
-      usage
-      exit
+  if [[ -z "${APPLICATION_PATH}" ]]; then
+    echo "ERROR! APPLICATION_PATH not set"
+    usage
+    exit
   fi
 
+  # Setting up values for COMPSs options
   if [[ -z "${AGENT_PORT}" ]]; then
     AGENT_PORT="${DEFAULT_AGENT_PORT}"
   fi
   if [[ -z "${DEBUG}" ]]; then
     DEBUG="${DEFAULT_DEBUG}"
   fi
+
+  # Setting up values for mF2C options
+  if [[ -z "${REPORT_ADDRESS}" ]]; then
+    REPORT_ADDRESS="${DEFAULT_REPORT_ADDRESS}"
+  fi
+  if [[ -n "${REPORT_ADDRESS}" ]] && [[ "${REPORT_ADDRESS}" != "NO_REPORT" ]] ; then
+    REPORT_ADDRESS_CONFIG="-Dreport.address=${REPORT_ADDRESS} "
+  fi
+
+  # Setting up values for DataClay options
   if [ "$DC_ENABLED" = true ] ; then
     if [[ -z "${DC_LOGICMODULE_HOST}" ]]; then
       DC_LOGICMODULE_HOST="${DEFAULT_DC_LOGICMODULE_HOST}"
@@ -194,6 +221,7 @@ parse_options() {
   echo  "AGENT_HOSTNAME: ${AGENT_HOSTNAME}"
   echo  "AGENT_PORT: ${AGENT_PORT}"
   echo  "DEBUG: ${DEBUG}"
+  echo  "REPORT_ADDRESS: ${REPORT_ADDRESS}"
   if [ "$DC_ENABLED" = true ] ; then
     echo  "DC_LOGICMODULE_HOST: ${DC_LOGICMODULE_HOST}"
     echo  "DC_LOGICMODULE_PORT: ${DC_LOGICMODULE_PORT}"
@@ -290,6 +318,7 @@ if [ "$DC_ENABLED" = true ] ; then
     generate_dataclay_stubs
     CLASSPATH="${CURRENT_DIR}/stubs:${DC_CLASSPATH}:${CLASSPATH}"
   fi
+  
 fi
 
 echo "Launching COMPSs agent on Worker ${AGENT_HOSTNAME} and port ${AGENT_PORT} with debug level ${DEBUG}"
@@ -301,13 +330,12 @@ fi
 echo "------------------------"
 echo "HOSTNAME: ${AGENT_HOSTNAME}"
 echo "------------------------"
+
 java \
 -cp "${CLASSPATH}" \
 -Dcompss.masterName="${AGENT_HOSTNAME}" \
 -Dcompss.uuid="${uuid}" \
 -Dcompss.appLogDir="/tmp/${uuid}" \
--Dcompss.project.file="${COMPSS_HOME}/Runtime/configuration/xml/projects/examples/local/project.xml" \
--Dcompss.resources.file="${COMPSS_HOME}/Runtime/configuration/xml/resources/examples/local/resources.xml" \
 -Dcompss.project.schema="${COMPSS_HOME}/Runtime/configuration/xml/projects/project_schema.xsd" \
 -Dcompss.resources.schema="${COMPSS_HOME}/Runtime/configuration/xml/resources/resources_schema.xsd" \
 -Dlog4j.configurationFile="${COMPSS_HOME}/Runtime/configuration/log/COMPSsMaster-log4j.${DEBUG}" \
@@ -315,5 +343,6 @@ java \
 -Dcompss.comm=es.bsc.compss.agent.rest.master.Adaptor \
 -Dcompss.lang=JAVA \
 ${DATACLAY_CONFIG_OPT} \
+${REPORT_ADDRESS_CONFIG}\
 es.bsc.compss.agent.rest.RESTAgent ${AGENT_PORT}
 

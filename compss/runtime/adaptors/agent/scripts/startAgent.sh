@@ -5,6 +5,9 @@ DEFAULT_DEBUG="off"
 DEFAULT_COMM="es.bsc.compss.agent.comm.CommAgentAdaptor"
 DEFAULT_SCHEDULER="es.bsc.compss.scheduler.loadbalancing.LoadBalancingScheduler"
 
+#mF2C Options
+DEFAULT_REPORT_ADDRESS="NO_REPORT"
+
 #DataClay Options
 DC_CLASSPATH="$(for i in /opt/COMPSs/storage/lib/*.jar ; do echo -n ${i}: ; done)/opt/COMPSs/storage/dataclay.jar"
 DC_TOOL="java -Dorg.apache.logging.log4j.simplelog.StatusLogger.level=OFF -cp ${DC_CLASSPATH}"
@@ -50,6 +53,8 @@ COMPSs options:
 
   --resources                path of the resources file 
                             (Default: ${COMPSS_HOME}/Runtime/configuration/xml/resources/examples/local/resources.xml)
+mF2C options:
+  -r, --report_address      endpoint where to report app execution updates
 
 
 DataClay options:
@@ -152,25 +157,17 @@ parse_options() {
         fi
         LOG_DIR=$2;
         shift 2;;
-
-      --resources )
-        if [ "$#" -lt 2 ]; then
-          echo "Illegal number of params"
-          usage
-          exit
-        fi
-        RESOURCES_FILE=$2;
-        shift 2;;
-
-      --project )
-        if [ "$#" -lt 2 ]; then
-          echo "Illegal number of params"
-          usage
-          exit
-        fi
-        PROJECT_FILE=$2;
-        shift 2;;
       
+# mF2C OPTIONS
+      -r    | --report_address )
+        if [ "$#" -lt 2 ]; then
+          echo "Illegal number of params"
+          usage
+          exit
+        fi
+        REPORT_ADDRESS=$2;
+        shift 2;;
+
 # DATACLAY OPTIONS
       -DC | --no-dataclay )
         DC_ENABLED=false
@@ -269,12 +266,15 @@ parse_options() {
   if [[ -z "${DEBUG}" ]]; then
     DEBUG="${DEFAULT_DEBUG}"
   fi
-  if [[ -z "${RESOURCES_FILE}" ]]; then
-    RESOURCES_FILE="${COMPSS_HOME}/Runtime/configuration/xml/resources/examples/local/resources.xml"
+
+  # Setting up values for mF2C options
+  if [[ -z "${REPORT_ADDRESS}" ]]; then
+    REPORT_ADDRESS="${DEFAULT_REPORT_ADDRESS}"
   fi
-  if [[ -z "${PROJECT_FILE}" ]]; then
-    PROJECT_FILE="${COMPSS_HOME}/Runtime/configuration/xml/projects/examples/local/project.xml"
+  if [[ -n "${REPORT_ADDRESS}" ]] && [[ "${REPORT_ADDRESS}" != "NO_REPORT" ]] ; then
+    REPORT_ADDRESS_CONFIG="-Dreport.address=${REPORT_ADDRESS} "
   fi
+
   if [ "$DC_ENABLED" = true ] ; then
     if [[ -z "${DC_LOGICMODULE_HOST}" ]]; then
       DC_LOGICMODULE_HOST="${DEFAULT_DC_LOGICMODULE_HOST}"
@@ -298,9 +298,8 @@ parse_options() {
   echo  "AGENT_HOSTNAME: ${AGENT_HOSTNAME}"
   echo  "REST_AGENT_PORT: ${REST_AGENT_PORT}"
   echo  "COMM_AGENT_PORT: ${COMM_AGENT_PORT}"
-  echo  "RESOURCES FILE: ${RESOURCES_FILE}"
-  echo  "PROJECT FILE: ${PROJECT_FILE}"
   echo  "DEBUG: ${DEBUG}"
+  echo  "REPORT_ADDRESS: ${REPORT_ADDRESS}"
   if [ "$DC_ENABLED" = true ] ; then
     echo  "DC_LOGICMODULE_HOST: ${DC_LOGICMODULE_HOST}"
     echo  "DC_LOGICMODULE_PORT: ${DC_LOGICMODULE_PORT}"
@@ -434,8 +433,6 @@ echo java \
 -Dcompss.appLogDir="${LOG_DIR}" \
 -Dcompss.comm=${comm} \
 -Dcompss.agent.configpath="${COMPSS_HOME}/Runtime/configuration/agents/all.json" \
--Dcompss.project.file="${PROJECT_FILE}" \
--Dcompss.resources.file="${RESOURCES_FILE}" \
 -Dcompss.project.schema="${COMPSS_HOME}/Runtime/configuration/xml/projects/project_schema.xsd" \
 -Dcompss.resources.schema="${COMPSS_HOME}/Runtime/configuration/xml/resources/resources_schema.xsd" \
 -Dlog4j.configurationFile="${COMPSS_HOME}/Runtime/configuration/log/COMPSsMaster-log4j.${DEBUG}" \
@@ -452,13 +449,12 @@ java \
 -Dcompss.specificLogDir="${LOG_DIR}" \
 -Dcompss.comm=${comm} \
 -Dcompss.agent.configpath="${COMPSS_HOME}/Runtime/configuration/agents/all.json" \
--Dcompss.project.file="${PROJECT_FILE}" \
--Dcompss.resources.file="${RESOURCES_FILE}" \
 -Dcompss.project.schema="${COMPSS_HOME}/Runtime/configuration/xml/projects/project_schema.xsd" \
 -Dcompss.resources.schema="${COMPSS_HOME}/Runtime/configuration/xml/resources/resources_schema.xsd" \
 -Dlog4j.configurationFile="${COMPSS_HOME}/Runtime/configuration/log/COMPSsMaster-log4j.${DEBUG}" \
 -Dcompss.scheduler=${SCHEDULER} \
 ${DATACLAY_CONFIG_OPT} \
+${REPORT_ADDRESS_CONFIG}\
 es.bsc.compss.agent.Agent
 
 

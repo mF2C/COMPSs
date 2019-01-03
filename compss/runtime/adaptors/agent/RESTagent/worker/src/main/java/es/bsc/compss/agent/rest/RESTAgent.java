@@ -100,7 +100,7 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
         RESTServiceLauncher launcher = null;
         try {
             this.port = args.getPort();
-            System.setProperty(RESTAgentConstants.COMPSS_AGENT_PORT, Integer.toString(port));
+            RESTAgentConstants.COMPSS_AGENT_PORT = port;
             launcher = new RESTServiceLauncher(port);
             LOGGER.info("Starting RESTAgent on port " + port);
             new Thread(launcher).start();
@@ -164,8 +164,9 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
         List<Processor> procs = description.getProcessors();
         description.setProcessors(procs);
 
+        Long appId = nodeRequest.getAppId();
         try {
-            Agent.addResources(r);
+            Agent.addResources(r, appId);
         } catch (AgentException ex) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(ex.getMessage()).build();
         }
@@ -184,10 +185,11 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
     public Response removeResources(ReduceNodeRequest request) {
         String name = request.getWorkerName();
         MethodResourceDescription mrd = request.getResources();
+        Long appId = request.getAppId();
         List<Processor> procs = mrd.getProcessors();
         mrd.setProcessors(procs);
         try {
-            Agent.removeResources(name, mrd);
+            Agent.removeResources(name, mrd, appId);
         } catch (AgentException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
 
@@ -206,8 +208,9 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
     @Consumes(MediaType.APPLICATION_XML)
     public Response removeResource(RemoveNodeRequest request) {
         String name = request.getWorkerName();
+        Long appId = request.getAppId();
         try {
-            Agent.removeNode(name);
+            Agent.removeNode(name, appId);
         } catch (AgentException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
 
@@ -226,8 +229,9 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
     @Consumes(MediaType.APPLICATION_XML)
     public Response lostResource(LostNodeNotification notification) {
         String name = notification.getWorkerName();
+        Long appId = notification.getAppId();
         try {
-            Agent.lostNode(name);
+            Agent.lostNode(name, appId);
         } catch (AgentException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
 
@@ -246,6 +250,10 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
     @Consumes(MediaType.APPLICATION_XML)
     @Produces(MediaType.APPLICATION_JSON)
     public Response startApplication(StartApplicationRequest request) {
+        System.out.println("RESOURCES ON TASK RECEPTION");
+        for (es.bsc.compss.types.resources.Worker w : ResourceManager.getAllWorkers()) {
+            System.out.println(w.getName() + " " + w.getDescription());
+        }
         Response response;
         String ceiClass = request.getCeiClass();
         if (ceiClass != null) {
@@ -257,7 +265,7 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
     }
 
     private static Response runMain(StartApplicationRequest request) {
-        // String serviceInstanceId = request.getServiceInstanceId();
+        String serviceInstanceId = request.getServiceInstanceId();
         String ceiClass = request.getCeiClass();
 
         String className = request.getClassName();
@@ -268,14 +276,18 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
          * Response.status(Response.Status.INTERNAL_SERVER_ERROR) .entity("Could not recover an input parameter value. "
          * + cnfe.getLocalizedMessage()).build(); }
          */
-        AppMainMonitor monitor = new AppMainMonitor();
+        String computeNodeID = Agent.getName();
+        String operationName = className + "." + methodName;
+        AppMainMonitor monitor = new AppMainMonitor(serviceInstanceId, computeNodeID, operationName);
+        Resource[] resources = request.getResources();
         long appId;
         try {
             appId = Agent.runMain(Lang.JAVA, ceiClass, className, methodName, params, null, new ApplicationParameter[0],
-                monitor);
+                resources, monitor);
         } catch (AgentException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
         }
+        monitor.start("" + appId);
         return Response.ok(appId, MediaType.TEXT_PLAIN).build();
     }
 
@@ -285,11 +297,12 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
         ApplicationParameterImpl[] arguments = request.getParams();
         ApplicationParameterImpl target = request.getTarget();
         ApplicationParameterImpl[] results;
+        Resource[] resources = request.getResources();
         boolean hasResult = request.isHasResult();
         if (hasResult) {
             results = new ApplicationParameterImpl[1];
-            results[1] = new ApplicationParameterImpl(null, Direction.IN, DataType.OBJECT_T, StdIOStream.UNSPECIFIED,
-                "", "result");
+            results[0] = new ApplicationParameterImpl(new Object(), Direction.OUT, DataType.OBJECT_T,
+                StdIOStream.UNSPECIFIED, "", "result");
         } else {
             results = new ApplicationParameterImpl[0];
         }
@@ -306,7 +319,7 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
 
         try {
             appId = Agent.runTask(Lang.JAVA, className, methodName, arguments, target, results,
-                MethodResourceDescription.EMPTY_FOR_CONSTRAINTS, monitor);
+                MethodResourceDescription.EMPTY_FOR_CONSTRAINTS, resources, monitor);
         } catch (AgentException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
         }
@@ -328,7 +341,6 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
         DataType[] resultTypes = notification.getParamTypes();
         String[] resultLocations = notification.getParamLocations();
         RemoteJobsRegistry.notifyJobEnd(jobId, endStatus, resultTypes, resultLocations);
-
         return Response.ok().build();
     }
 

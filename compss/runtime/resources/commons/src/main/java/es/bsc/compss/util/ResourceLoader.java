@@ -313,7 +313,7 @@ public class ResourceLoader {
         }
 
         if (mrd.getTotalCPUComputingUnits() > 0) {
-            ResourceManager.addDynamicWorker((DynamicMethodWorker) Comm.getAppHost(), mrd);
+            ResourceManager.addDynamicWorker((DynamicMethodWorker) Comm.getAppHost(), mrd, null);
             return true;
         } else {
             return false;

@@ -48,6 +48,7 @@ import es.bsc.compss.types.data.location.DataLocation;
 import es.bsc.compss.types.data.location.ProtocolType;
 import es.bsc.compss.types.data.operation.JobTransfersListener;
 import es.bsc.compss.types.implementations.Implementation;
+import es.bsc.compss.types.implementations.TaskType;
 import es.bsc.compss.types.job.Job;
 import es.bsc.compss.types.job.JobEndStatus;
 import es.bsc.compss.types.job.JobHistory;
@@ -381,7 +382,8 @@ public class ExecutionAction extends AllocatableAction {
                 + " (Task: " + this.task.getId() + ")");
             JOB_LOGGER.info("  * Method name: " + this.task.getTaskDescription().getName());
             JOB_LOGGER.info("  * Target host: " + this.getAssignedResource().getName());
-
+            TaskMonitor monitor = task.getTaskMonitor();
+            monitor.onSubmission();
             this.profile.start();
             JobDispatcher.dispatch(job);
         } else {
@@ -556,7 +558,6 @@ public class ExecutionAction extends AllocatableAction {
                     Comm.removeDataKeepingValue("tmp" + dId);
                     break;
             }
-
             // Retrieve parameter information
             name = dId.getRenaming();
         }
@@ -652,11 +653,16 @@ public class ExecutionAction extends AllocatableAction {
                     case IN:
                     case CONCURRENT:
                     case COMMUTATIVE:
-                    case INOUT:
-                        // Return value is OUT, skip the current parameter
+                        // FTM already knows about this datum
                         continue;
                     case OUT:
                         dId = ((WAccessId) dp.getDataAccessId()).getWrittenDataInstance();
+                        break;
+                    case INOUT:
+                        dId = ((RWAccessId) dp.getDataAccessId()).getWrittenDataInstance();
+                        if (job.getType() == TaskType.SERVICE) {
+                            continue;
+                        }
                         break;
                 }
 
@@ -840,7 +846,15 @@ public class ExecutionAction extends AllocatableAction {
      */
     @Override
     public final List<ResourceScheduler<? extends WorkerResourceDescription>> getCompatibleWorkers() {
-        return getCoreElementExecutors(this.task.getTaskDescription().getCoreElement().getCoreId());
+        List<ResourceScheduler<? extends WorkerResourceDescription>> candidates;
+        candidates = getCoreElementExecutors(this.task.getTaskDescription().getCoreElement().getCoreId());
+        LinkedList compatible = new LinkedList();
+        for (ResourceScheduler r : candidates) {
+            if (r.getAssignedAppId() == null || r.getAssignedAppId() == this.task.getAppId()) {
+                compatible.add(r);
+            }
+        }
+        return compatible;
     }
 
     @Override

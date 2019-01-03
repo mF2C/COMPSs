@@ -27,7 +27,7 @@ import org.json.JSONObject;
 public class FakeResourceScheduler extends ResourceScheduler<MethodResourceDescription> {
 
     public FakeResourceScheduler(FakeWorker w, JSONObject resJSON, JSONObject implJSON) {
-        super(w, resJSON, implJSON);
+        super(w, null, resJSON, implJSON);
     }
 
     @Override

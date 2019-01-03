@@ -25,8 +25,8 @@ public class PendingReduction<T extends WorkerResourceDescription> extends Resou
     private final Semaphore sem;
 
 
-    public PendingReduction(T reduction) {
-        super(reduction);
+    public PendingReduction(T reduction, Long appId) {
+        super(reduction, appId);
         this.sem = new Semaphore(0);
     }
 

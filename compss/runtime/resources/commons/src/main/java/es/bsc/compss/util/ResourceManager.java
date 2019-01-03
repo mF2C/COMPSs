@@ -131,7 +131,6 @@ public class ResourceManager {
         } catch (NoResourceAvailableException e) {
             ErrorManager.fatal(ERROR_NO_RES, e);
         }
-
     }
 
     /**
@@ -358,8 +357,9 @@ public class ResourceManager {
      *
      * @param worker Worker to add.
      * @param granted Worker resource description granted by the connector.
+     * @param appId Id of the application whose tasks can use the resource
      */
-    public static void addDynamicWorker(DynamicMethodWorker worker, MethodResourceDescription granted) {
+    public static void addDynamicWorker(DynamicMethodWorker worker, MethodResourceDescription granted, Long appId) {
         synchronized (pool) {
             worker.updatedFeatures();
             pool.addDynamicResource(worker);
@@ -370,7 +370,7 @@ public class ResourceManager {
                 poolCoreMaxConcurrentTasks[coreId] += maxTaskCount[coreId];
             }
         }
-        ResourceUpdate<MethodResourceDescription> ru = new PerformedIncrease<>(worker.getDescription());
+        ResourceUpdate<MethodResourceDescription> ru = new PerformedIncrease<>(worker.getDescription(), appId);
         resourceUser.updatedResource(worker, ru);
 
         // Log new resource
@@ -385,12 +385,14 @@ public class ResourceManager {
      * @param origin Creation request.
      * @param worker Worker to add.
      * @param granted Worker resource description granted by the connector.
+     * @param appId Id of the application whose tasks can use the resource
      */
     public static void addCloudWorker(ResourceCreationRequest origin, CloudMethodWorker worker,
-        CloudMethodResourceDescription granted) {
+        CloudMethodResourceDescription granted, Long appId) {
+
         CloudProvider cloudProvider = origin.getProvider();
         cloudProvider.confirmedCreation(origin, worker, granted);
-        addDynamicWorker(worker, granted);
+        addDynamicWorker(worker, granted, appId);
     }
 
     /**
@@ -400,7 +402,6 @@ public class ResourceManager {
      * @param extension Description of the increase.
      */
     public static void increasedDynamicWorker(DynamicMethodWorker worker, MethodResourceDescription extension) {
-
         synchronized (pool) {
             int[] maxTaskCount = worker.getSimultaneousTasks();
             for (int coreId = 0; coreId < maxTaskCount.length; coreId++) {
@@ -414,7 +415,7 @@ public class ResourceManager {
             }
             pool.defineCriticalSet();
         }
-        ResourceUpdate<MethodResourceDescription> ru = new PerformedIncrease<>(extension);
+        ResourceUpdate<MethodResourceDescription> ru = new PerformedIncrease<>(extension, null);
         resourceUser.updatedResource(worker, ru);
 
         // Log modified resource
@@ -444,7 +445,7 @@ public class ResourceManager {
      * @param reduction Description of the decrease.
      */
     public static void requestWorkerReduction(DynamicMethodWorker worker, MethodResourceDescription reduction) {
-        ResourceUpdate<MethodResourceDescription> modification = new PendingReduction<>(reduction);
+        ResourceUpdate<MethodResourceDescription> modification = new PendingReduction<>(reduction, null);
         resourceUser.updatedResource(worker, modification);
     }
 
@@ -455,7 +456,8 @@ public class ResourceManager {
      */
     public static void requestWholeWorkerReduction(String name) {
         MethodWorker worker = (MethodWorker) pool.getResource(name);
-        ResourceUpdate<MethodResourceDescription> modification = new PendingReduction<>(worker.getDescription().copy());
+        ResourceUpdate<MethodResourceDescription> modification =
+            new PendingReduction<>(worker.getDescription().copy(), null);
         resourceUser.updatedResource(worker, modification);
     }
 
@@ -465,7 +467,8 @@ public class ResourceManager {
      * @param worker Worker.
      */
     public static void requestWholeWorkerReduction(MethodWorker worker) {
-        ResourceUpdate<MethodResourceDescription> modification = new PendingReduction<>(worker.getDescription().copy());
+        ResourceUpdate<MethodResourceDescription> modification =
+            new PendingReduction<>(worker.getDescription().copy(), null);
         resourceUser.updatedResource(worker, modification);
     }
 
@@ -478,7 +481,7 @@ public class ResourceManager {
     public static <T extends WorkerResourceDescription> void confirmWorkerReduction(Worker<T> worker,
         PendingReduction<T> reduction) {
 
-        ResourceUpdate<T> ru = new PerformedReduction<>(reduction.getModification());
+        ResourceUpdate<T> ru = new PerformedReduction<>(reduction.getModification(), null);
         resourceUser.updatedResource(worker, ru);
     }
 
@@ -489,9 +492,9 @@ public class ResourceManager {
      * @param reduction Reduction performed.
      */
     public static void notifyWorkerReduction(DynamicMethodWorker worker, MethodResourceDescription reduction) {
-        worker.applyReduction(new PendingReduction<>(reduction));
+        worker.applyReduction(new PendingReduction<>(reduction, null));
         MethodResourceDescription modification = reduction;
-        ResourceUpdate<MethodResourceDescription> ru = new PerformedReduction<>(modification);
+        ResourceUpdate<MethodResourceDescription> ru = new PerformedReduction<>(modification, null);
         resourceUser.updatedResource(worker, ru);
     }
 
@@ -503,9 +506,9 @@ public class ResourceManager {
     public static void notifyWholeWorkerReduction(String name) {
         DynamicMethodWorker worker = (DynamicMethodWorker) pool.getResource(name);
         MethodResourceDescription reduction = worker.getDescription();
-        worker.applyReduction(new PendingReduction<>(reduction));
+        worker.applyReduction(new PendingReduction<>(reduction, null));
         MethodResourceDescription modification = reduction;
-        ResourceUpdate<MethodResourceDescription> ru = new PerformedReduction<>(modification);
+        ResourceUpdate<MethodResourceDescription> ru = new PerformedReduction<>(modification, null);
         resourceUser.updatedResource(worker, ru);
     }
 
@@ -516,9 +519,9 @@ public class ResourceManager {
      */
     public static void notifyWholeWorkerReduction(DynamicMethodWorker worker) {
         MethodResourceDescription reduction = worker.getDescription();
-        worker.applyReduction(new PendingReduction<>(reduction));
+        worker.applyReduction(new PendingReduction<>(reduction, null));
         MethodResourceDescription modification = reduction;
-        ResourceUpdate<MethodResourceDescription> ru = new PerformedReduction<>(modification);
+        ResourceUpdate<MethodResourceDescription> ru = new PerformedReduction<>(modification, null);
         resourceUser.updatedResource(worker, ru);
     }
 

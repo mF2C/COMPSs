@@ -230,15 +230,15 @@ public class TaskScheduler {
      *
      * @param <T> WorkerResourceDescription.
      * @param w Associated worker.
+     * @param appId Id of the application whose tasks can use the resources
      * @param defaultResources JSON description of the resources.
      * @param defaultImplementations JSON description of the implementations.
      * @return A ResourceScheduler.
      */
     public <T extends WorkerResourceDescription> ResourceScheduler<T> generateSchedulerForResource(Worker<T> w,
-        JSONObject defaultResources, JSONObject defaultImplementations) {
-
+            Long appId, JSONObject defaultResources, JSONObject defaultImplementations) {
         // LOGGER.info("[TaskScheduler] Generate scheduler for resource " + w.getName());
-        return new ResourceScheduler<>(w, defaultResources, defaultImplementations);
+        return new ResourceScheduler<>(w, appId, defaultResources, defaultImplementations);
     }
 
     /**
@@ -754,7 +754,8 @@ public class TaskScheduler {
         ResourceScheduler<T> ui = this.workers.get(worker);
         if (ui == null) {
             // Register worker if it's the first time it is useful.
-            ui = addWorker(worker, this.jsm.getJSONForResource(worker), this.jsm.getJSONForImplementations());
+            ui = addWorker(worker, rs.getAssignedAppId(), this.jsm.getJSONForResource(worker),
+                    this.jsm.getJSONForImplementations());
             startWorker(ui);
             workerDetected(ui);
         }
@@ -770,12 +771,13 @@ public class TaskScheduler {
      * Registers a new Worker node for the scheduler to use it and creates the corresponding ResourceScheduler.
      *
      * @param worker Worker to incorporate.
+     * @param appId Id of the application whose tasks can use the resources.
      * @return the ResourceScheduler that will manage the scheduling for the given worker.
      */
-    private <T extends WorkerResourceDescription> ResourceScheduler<T> addWorker(Worker<T> worker,
-        JSONObject jsonResource, JSONObject jsonImpls) {
+    private <T extends WorkerResourceDescription> ResourceScheduler<T> addWorker(Worker<T> worker, Long appId,
+            JSONObject jsonResource, JSONObject jsonImpls) {
 
-        ResourceScheduler<T> ui = generateSchedulerForResource(worker, jsonResource, jsonImpls);
+        ResourceScheduler<T> ui = generateSchedulerForResource(worker,appId, jsonResource, jsonImpls);
         synchronized (this.workers) {
             this.workers.put(worker, ui);
         }
@@ -882,6 +884,7 @@ public class TaskScheduler {
         LinkedList<AllocatableAction> unblockedActions = new LinkedList<>();
         LinkedList<AllocatableAction> blockedActions = new LinkedList<>();
         this.workerFeaturesUpdate(worker, modification.getModification(), unblockedActions, blockedActions);
+
         for (AllocatableAction action : blockedActions) {
             if (!action.hasDataPredecessors() && !action.hasStreamProducers()) {
                 removeFromReady(action);
@@ -894,6 +897,7 @@ public class TaskScheduler {
         if (dynamicWorker.shouldBeStopped()) {
             LOGGER.info("Starting stop process for worker " + worker.getName());
             this.workerStopped((ResourceScheduler<WorkerResourceDescription>) worker);
+
             StopWorkerAction action;
             action = new StopWorkerAction(generateSchedulingInformation(worker), worker, this, modification);
             try {

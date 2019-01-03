@@ -28,14 +28,20 @@ public abstract class ResourceUpdate<T extends ResourceDescription> {
 
 
     private final T modification;
+    private final Long assignedAppId;
 
 
-    protected ResourceUpdate(T modification) {
+    protected ResourceUpdate(T modification, Long appId) {
         this.modification = modification;
+        this.assignedAppId = appId;
     }
 
     public final T getModification() {
         return modification;
+    }
+
+    public Long getAssignedAppId() {
+        return assignedAppId;
     }
 
     public abstract Type getType();

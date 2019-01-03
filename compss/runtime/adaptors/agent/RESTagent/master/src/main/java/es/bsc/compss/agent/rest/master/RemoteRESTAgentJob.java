@@ -18,6 +18,7 @@ package es.bsc.compss.agent.rest.master;
 
 import es.bsc.compss.agent.RESTAgentConstants;
 import es.bsc.compss.agent.rest.types.Orchestrator;
+import es.bsc.compss.agent.rest.types.RESTResource;
 import es.bsc.compss.agent.rest.types.RemoteJobListener;
 import es.bsc.compss.agent.rest.types.messages.StartApplicationRequest;
 import es.bsc.compss.agent.util.RemoteJobsRegistry;
@@ -41,6 +42,7 @@ import es.bsc.compss.types.job.JobListener;
 import es.bsc.compss.types.parameter.BasicTypeParameter;
 import es.bsc.compss.types.parameter.DependencyParameter;
 import es.bsc.compss.types.parameter.Parameter;
+import es.bsc.compss.types.resources.MethodResourceDescription;
 import es.bsc.compss.types.resources.Resource;
 import es.bsc.compss.types.uri.SimpleURI;
 
@@ -56,7 +58,12 @@ import javax.ws.rs.core.Response;
 public class RemoteRESTAgentJob extends Job<RemoteRESTAgent> {
 
     private static final String REST_AGENT_URL =
-        "http://" + COMPSsNode.getMasterName() + ":" + System.getProperty(RESTAgentConstants.COMPSS_AGENT_PORT) + "/";
+        "http://" + COMPSsNode.getMasterName() + ":" + RESTAgentConstants.COMPSS_AGENT_PORT + "/";
+
+    static {
+        System.out.println("READING REST AGENT PORT @ " + RESTAgentConstants.COMPSS_AGENT_PORT + " ");
+        System.out.println(REST_AGENT_URL);
+    }
 
 
     public RemoteRESTAgentJob(RemoteRESTAgent executor, int taskId, TaskDescription task, Implementation impl,
@@ -140,7 +147,7 @@ public class RemoteRESTAgentJob extends Job<RemoteRESTAgent> {
                     DependencyParameter dPar = (DependencyParameter) param;
                     DataAccessId dAccId = dPar.getDataAccessId();
                     String inRenaming;
-                    // String outRenaming;
+                    String outRenaming;
                     if (dAccId instanceof WAccessId) {
                         throw new JobExecutionException("Target parameter is a Write access", null);
                     } else {
@@ -148,12 +155,12 @@ public class RemoteRESTAgentJob extends Job<RemoteRESTAgent> {
                             // Read write mode
                             RWAccessId rwaId = (RWAccessId) dAccId;
                             inRenaming = rwaId.getReadDataInstance().getRenaming();
-                            // outRenaming = rwaId.getWrittenDataInstance().getRenaming();
+                            outRenaming = rwaId.getWrittenDataInstance().getRenaming();
                         } else {
                             // Read only mode
                             RAccessId raId = (RAccessId) dAccId;
                             inRenaming = raId.getReadDataInstance().getRenaming();
-                            // outRenaming = inRenaming;
+                            outRenaming = inRenaming;
                         }
                     }
 
@@ -189,6 +196,9 @@ public class RemoteRESTAgentJob extends Job<RemoteRESTAgent> {
             }
         }
         System.out.println("SUBMISSION[" + this.getJobId() + "] Stage in completed.");
+        MethodResourceDescription features = (MethodResourceDescription) this.getImplementation().getRequirements();
+        String remoteName = this.getHostName();
+        sar.addNode(RESTResource.createResource(remoteName, features, Adaptor.class.getCanonicalName(), null, null));
         sar.setOrchestrator(REST_AGENT_URL, Orchestrator.HttpMethod.PUT, "COMPSs/endApplication/");
 
         Response response = wt.request(MediaType.APPLICATION_JSON).put(Entity.xml(sar), Response.class);
@@ -203,7 +213,8 @@ public class RemoteRESTAgentJob extends Job<RemoteRESTAgent> {
 
                 @Override
                 public void finishedExecution(JobEndStatus endStatus, DataType[] paramTypes, String[] paramLocations) {
-                    System.out.println("SUBMISSION[" + getJobId() + "] Job completed.");
+                    System.out.println("SUBMISSION[" + getJobId() + "] " + "Job "
+                        + (endStatus == JobEndStatus.OK ? "completed" : "failed") + ".");
                     stageout(paramTypes, paramLocations);
                     if (endStatus == JobEndStatus.OK) {
                         getListener().jobCompleted(RemoteRESTAgentJob.this);
@@ -296,9 +307,16 @@ public class RemoteRESTAgentJob extends Job<RemoteRESTAgent> {
             }
         }
 
-        System.out.println("STAGE OUT[" + this.getJobId() + "]     Parameters:");
+        System.out.println("STAGE OUT[" + this.getJobId() + "]     Arguments:");
         for (int parIdx = 0; parIdx < numParams; parIdx++) {
             DataType type = paramTypes[parIdx];
+            if (type == null) {
+                Parameter p = params.get(parIdx);
+                System.out.println(
+                    "STAGE OUT[" + this.getJobId() + "]     * Parameter " + parIdx + " (" + p.getName() + "):");
+                System.out.println("STAGE OUT[" + this.getJobId() + "]             Type: " + p.getType());
+                continue;
+            }
             switch (type) {
                 case FILE_T:
                 case EXTERNAL_PSCO_T:

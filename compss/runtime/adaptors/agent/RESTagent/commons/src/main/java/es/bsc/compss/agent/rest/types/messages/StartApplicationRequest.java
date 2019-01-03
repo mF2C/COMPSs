@@ -19,15 +19,20 @@ package es.bsc.compss.agent.rest.types.messages;
 import es.bsc.compss.agent.rest.types.ApplicationParameterImpl;
 import es.bsc.compss.agent.rest.types.ApplicationParameterValue.ArrayParameter;
 import es.bsc.compss.agent.rest.types.ApplicationParameterValue.ElementParameter;
+import es.bsc.compss.agent.rest.types.ExternalAdaptorResource;
+import es.bsc.compss.agent.rest.types.NIOAdaptorResource;
 import es.bsc.compss.agent.rest.types.Orchestrator;
+import es.bsc.compss.agent.types.Resource;
 import es.bsc.compss.types.annotations.parameter.DataType;
 import es.bsc.compss.types.annotations.parameter.Direction;
 import es.bsc.compss.types.annotations.parameter.StdIOStream;
 import es.bsc.compss.types.parameter.Parameter;
 
 import java.io.Serializable;
+import javax.xml.bind.annotation.XmlElement;
 
 import javax.xml.bind.annotation.XmlElementWrapper;
+import javax.xml.bind.annotation.XmlElements;
 import javax.xml.bind.annotation.XmlRootElement;
 
 
@@ -47,6 +52,7 @@ public class StartApplicationRequest implements Serializable {
     private String ceiClass;
     private String className;
     private String methodName;
+    private Resource[] resources = new Resource[0];
     private ApplicationParameterImpl[] params = new ApplicationParameterImpl[0];
     private ApplicationParameterImpl target;
     private boolean hasResult;
@@ -173,6 +179,29 @@ public class StartApplicationRequest implements Serializable {
     @XmlElementWrapper(name = "parameters")
     public ApplicationParameterImpl[] getParams() {
         return this.params;
+    }
+
+    /**
+     * Adds a new resource to use during the operation execution.
+     *
+     * @param r resource description
+     */
+    public void addNode(Resource r) {
+        Resource[] resources = new Resource[this.resources.length + 1];
+        System.arraycopy(this.resources, 0, resources, 0, this.resources.length);
+        resources[this.resources.length] = r;
+        this.resources = resources;
+    }
+
+    @XmlElementWrapper(name = "resources")
+    @XmlElements({ @XmlElement(name = "externalResource", type = ExternalAdaptorResource.class, required = false),
+        @XmlElement(name = "nioResource", type = NIOAdaptorResource.class, required = false), })
+    public Resource[] getResources() {
+        return resources;
+    }
+
+    public void setResources(Resource[] resources) {
+        this.resources = resources;
     }
 
     public void setParams(ApplicationParameterImpl[] params) {

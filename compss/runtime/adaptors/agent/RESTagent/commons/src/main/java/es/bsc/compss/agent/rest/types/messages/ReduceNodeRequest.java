@@ -25,14 +25,24 @@ public class ReduceNodeRequest {
 
     private String workerName;
     private MethodResourceDescription resources;
+    private long appId;
 
 
     public ReduceNodeRequest() {
     }
 
-    public ReduceNodeRequest(String workerName, MethodResourceDescription mrd) {
+    /**
+     * Constructs a new ReduceNodeRequest for removing the {@code mrd} resources on node {@code workerName} from the
+     * resource pool associated to application {@code appId}.
+     *
+     * @param workerName name of the node
+     * @param mrd resources to remove
+     * @param appId id of the application
+     */
+    public ReduceNodeRequest(String workerName, MethodResourceDescription mrd, Long appId) {
         this.workerName = workerName;
         this.resources = mrd;
+        this.appId = appId;
     }
 
     public String getWorkerName() {
@@ -50,4 +60,13 @@ public class ReduceNodeRequest {
     public void setResources(MethodResourceDescription resources) {
         this.resources = resources;
     }
+
+    public Long getAppId() {
+        return appId;
+    }
+
+    public void setAppId(Long appId) {
+        this.appId = appId;
+    }
+
 }

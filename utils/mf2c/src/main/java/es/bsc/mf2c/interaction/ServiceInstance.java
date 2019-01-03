@@ -1,5 +1,5 @@
-/*
- *  Copyright 2002-2019 Barcelona Supercomputing Center (www.bsc.es)
+/*         
+ *  Copyright 2002-2018 Barcelona Supercomputing Center (www.bsc.es)
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -14,12 +14,26 @@
  *  limitations under the License.
  *
  */
-package es.bsc.compss.agent;
+package es.bsc.mf2c.interaction;
 
-public class AgentConstants {
 
-    public static final String DATACLAY_CONFIG_PATH = "dataclay.configpath";
-    public static final String AGENT_CONFIG_PATH = "compss.agent.configpath";
-    public static final String REPORT_ADDRESS = "report.address";
+public class ServiceInstance {
+
+    private String href;
+
+    public ServiceInstance() {
+    }
+
+    public ServiceInstance(String href) {
+        this.href = href;
+    }
+
+    public void setHref(String href) {
+        this.href = href;
+    }
+
+    public String getHref() {
+        return href;
+    }
 
 }

@@ -219,7 +219,9 @@ public class AccessProcessor implements Runnable, TaskProducer {
             hasTarget, numReturns, parameters, monitor, onFailure, timeOut);
 
         TaskMonitor registeredMonitor = currentTask.getTaskMonitor();
-        registeredMonitor.onCreation();
+        int taskId = currentTask.getId();
+        int coreId = currentTask.getTaskDescription().getCoreElement().getCoreId();
+        registeredMonitor.onCreation(appId, taskId, coreId);
 
         LOGGER.debug("Requesting analysis of Task " + currentTask.getId());
         if (!this.requestQueue.offer(new TaskAnalysisRequest(currentTask))) {
@@ -252,7 +254,9 @@ public class AccessProcessor implements Runnable, TaskProducer {
             parameters, monitor, onFailure, timeOut);
 
         TaskMonitor registeredMonitor = currentTask.getTaskMonitor();
-        registeredMonitor.onCreation();
+        int taskId = currentTask.getId();
+        int coreId = currentTask.getTaskDescription().getCoreElement().getCoreId();
+        registeredMonitor.onCreation(appId, taskId, coreId);
 
         LOGGER.debug("Requesting analysis of new service Task " + currentTask.getId());
         if (!this.requestQueue.offer(new TaskAnalysisRequest(currentTask))) {

@@ -69,10 +69,9 @@ public class FIFOScheduler extends TaskScheduler {
 
     @Override
     public <T extends WorkerResourceDescription> FIFOResourceScheduler<T> generateSchedulerForResource(Worker<T> w,
-        JSONObject resJSON, JSONObject implJSON) {
-        // LOGGER.debug("[FIFOScheduler] Generate scheduler for resource " +
-        // w.getName());
-        return new FIFOResourceScheduler<>(w, resJSON, implJSON);
+        Long appId, JSONObject resJSON, JSONObject implJSON) {
+        // LOGGER.debug("[FIFOScheduler] Generate scheduler for resource " + w.getName());
+        return new FIFOResourceScheduler<>(w, appId, resJSON, implJSON);
     }
 
     @Override

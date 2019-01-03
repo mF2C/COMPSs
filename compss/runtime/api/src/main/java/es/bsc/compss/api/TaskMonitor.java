@@ -23,8 +23,12 @@ public interface TaskMonitor {
 
     /**
      * Actions to be performed by monitor on task creation.
+     *
+     * @param appId application id
+     * @param taskId task identifier
+     * @param coreId core element id of the task
      */
-    public void onCreation();
+    public void onCreation(long appId, int taskId, Integer coreId);
 
     /**
      * Actions to be performed by monitor on data access.
@@ -42,14 +46,25 @@ public interface TaskMonitor {
     public void onSubmission();
 
     /**
+     * Actions to be performed by the monitor when the scheduler reports the progress of the task execution.
+     *
+     * @param update description of the progress update
+     */
+    public void onProgress(ProgressUpdate update);
+
+    /*
      * Actions to be performed by the monitor when a new {@code type}-value, identyfied by the Id {@code dataId}, has
      * been generated at location {@code location} according to the parameter on position {@code paramId} of the task
      * with name {@code paramName}.
      *
      * @param paramId Parameter id.
+     * 
      * @param paramName Name of the parameter.
+     * 
      * @param paramType Parameter type.
+     * 
      * @param dataId Data Management Id.
+     * 
      * @param dataLocation Value location.
      */
     public void valueGenerated(int paramId, String paramName, DataType paramType, String dataId, Object dataLocation);
@@ -93,4 +108,113 @@ public interface TaskMonitor {
      * Actions to be performed by monitor on task failure.
      */
     public void onFailure();
+
+
+    public static interface ProgressUpdate {
+
+        enum Type {
+            CHILD_TASK_CREATED, CHILD_TASK_COMPLETED, CHILD_TASK_SCHEDULE_UPDATE
+        }
+
+
+        Type getType();
+    }
+
+    public static class ChildTaskCreated implements ProgressUpdate {
+
+        private final int taskId;
+        private final Integer coreId;
+
+
+        public ChildTaskCreated(int taskId, Integer coreId) {
+            this.taskId = taskId;
+            this.coreId = coreId;
+        }
+
+        @Override
+        public Type getType() {
+            return Type.CHILD_TASK_CREATED;
+        }
+
+        public int getTaskId() {
+            return taskId;
+        }
+
+        public Integer getCoreId() {
+            return coreId;
+        }
+
+    }
+
+    public static class ChildTaskCompleted implements ProgressUpdate {
+
+        private final int taskId;
+        private final Integer coreId;
+        private final Long executionTime;
+
+
+        /**
+         * Constructs a new Child Task Completed to notify the end of task {@code taskId} with coreElement {@code
+         * coreId}.
+         *
+         * @param taskId Id of the completed child task
+         * @param coreId Id of the core element of the task
+         * @param executionTime elapsed time to run the task
+         */
+        public ChildTaskCompleted(int taskId, Integer coreId, Long executionTime) {
+            this.taskId = taskId;
+            this.coreId = coreId;
+            this.executionTime = executionTime;
+        }
+
+        @Override
+        public Type getType() {
+            return Type.CHILD_TASK_COMPLETED;
+        }
+
+        public int getTaskId() {
+            return taskId;
+        }
+
+        public Integer getCoreId() {
+            return coreId;
+        }
+
+        public Long getExecutionTime() {
+            return executionTime;
+        }
+
+    }
+
+    public static class ChildTaskUpdate implements ProgressUpdate {
+
+        private final int taskId;
+        private final long expectedEndTime;
+
+
+        /**
+         * Constructs a new Child Task Update to notify the progress of a child task {@code taskId}.
+         *
+         * @param taskId updated task id
+         * @param expectedEndTime expected end time in millis from January 1970 UTC
+         */
+        public ChildTaskUpdate(int taskId, long expectedEndTime) {
+            this.taskId = taskId;
+            this.expectedEndTime = expectedEndTime;
+        }
+
+        @Override
+        public Type getType() {
+            return Type.CHILD_TASK_SCHEDULE_UPDATE;
+        }
+
+        public int getTaskId() {
+            return taskId;
+        }
+
+        public long getExpectedEndTime() {
+            return expectedEndTime;
+        }
+
+    }
 }

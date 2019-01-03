@@ -163,13 +163,15 @@ public class ExternalAdaptationManager extends Thread {
             String providerName = params[1];
             String ip = params[2];
             cloudRemove(providerName, ip);
-        } else if (params.length == 2) { // Node stop
-            String ip = params[1];
-            normalRemove(ip);
         } else {
-            RUNTIME_LOGGER.error(LOG_PREFIX + "ERROR: Number of parameters is incorrect (" + params.length + ")");
-            writePipe(resultPipe, "ERROR: Number of parameters is incorrect (" + params.length + ")");
+            if (params.length == 2) { // Node stop
+                String ip = params[1];
+                normalRemove(ip);
+            } else {
+                RUNTIME_LOGGER.error(LOG_PREFIX + "ERROR: Number of parameters is incorrect (" + params.length + ")");
+                writePipe(resultPipe, "ERROR: Number of parameters is incorrect (" + params.length + ")");
 
+            }
         }
     }
 
@@ -187,14 +189,16 @@ public class ExternalAdaptationManager extends Thread {
             String typeName = params[2];
             String imageName = params[3];
             cloudCreation(providerName, typeName, imageName);
-        } else if (params.length == 3) { // Node start
-            String resourceName = params[1];
-            String description = params[2];
-            normalCreation(resourceName, description);
         } else {
-            RUNTIME_LOGGER.error(LOG_PREFIX + "ERROR: Number of parameters is incorrect (" + params.length + ")");
-            writePipe(resultPipe, "ERROR: Number of parameters is incorrect (" + params.length + ")");
+            if (params.length == 3) { // Node start
+                String resourceName = params[1];
+                String description = params[2];
+                normalCreation(resourceName, description);
+            } else {
+                RUNTIME_LOGGER.error(LOG_PREFIX + "ERROR: Number of parameters is incorrect (" + params.length + ")");
+                writePipe(resultPipe, "ERROR: Number of parameters is incorrect (" + params.length + ")");
 
+            }
         }
     }
 

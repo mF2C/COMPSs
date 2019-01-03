@@ -120,7 +120,7 @@ public class MOResourceSchedulerTest {
     @Test
     public void testNull() {
         MOResourceScheduler<MethodResourceDescription> rs =
-            new MOResourceScheduler<MethodResourceDescription>(worker, null, null);
+            new MOResourceScheduler<MethodResourceDescription>(worker, null, null, null);
         for (CoreElement ce : CoreManager.getAllCores()) {
             List<Implementation> impls = ce.getImplementations();
             for (Implementation impl : impls) {
@@ -143,8 +143,8 @@ public class MOResourceSchedulerTest {
 
     @Test
     public void testEmpty() {
-        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<MethodResourceDescription>(worker,
-            new JSONObject("{\"implementations\":{}}"), null);
+        MOResourceScheduler<MethodResourceDescription> rs =
+            new MOResourceScheduler<>(worker, null, new JSONObject("{\"implementations\":{}}"), null);
         for (CoreElement ce : CoreManager.getAllCores()) {
             List<Implementation> impls = ce.getImplementations();
             for (Implementation impl : impls) {
@@ -167,7 +167,7 @@ public class MOResourceSchedulerTest {
 
     @Test
     public void testAllSetNoPrice() {
-        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<MethodResourceDescription>(worker,
+        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<>(worker, null,
             new JSONObject(
                 "{\"idlePrice\": " + SET_IDLE_PRICE + ", \"implementations\":{\"ClassA.methodA\":" + SET_PROFILE + ","
                     + "\"ClassB.methodA\":" + SET_PROFILE + "," + "\"ClassA.methodB\":" + SET_PROFILE + "}}"),
@@ -194,7 +194,7 @@ public class MOResourceSchedulerTest {
 
     @Test
     public void testAllSetNoPower() {
-        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<MethodResourceDescription>(worker,
+        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<>(worker, null,
             new JSONObject(
                 "{\"idlePrice\": " + SET_IDLE_PRICE + ", \"implementations\":{\"ClassA.methodA\":" + SET_PROFILE + ","
                     + "\"ClassB.methodA\":" + SET_PROFILE + "," + "\"ClassA.methodB\":" + SET_PROFILE + "}}"),
@@ -221,7 +221,7 @@ public class MOResourceSchedulerTest {
 
     @Test
     public void testAllSet() {
-        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<MethodResourceDescription>(worker,
+        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<>(worker, null,
             new JSONObject("{\"idlePower\": " + SET_IDLE_POWER + ", \"idlePrice\": " + SET_IDLE_PRICE
                 + ", \"implementations\":{\"ClassA.methodA\":" + SET_PROFILE + "," + "\"ClassB.methodA\":" + SET_PROFILE
                 + "," + "\"ClassA.methodB\":" + SET_PROFILE + "}}"),
@@ -248,13 +248,13 @@ public class MOResourceSchedulerTest {
 
     @Test
     public void testAllSetCopy() {
-        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<MethodResourceDescription>(worker,
+        MOResourceScheduler<MethodResourceDescription> rs = new MOResourceScheduler<>(worker, null,
             new JSONObject("{\"idlePower\": " + SET_IDLE_POWER + ", \"idlePrice\": " + SET_IDLE_PRICE
                 + ", \"implementations\":{\"ClassA.methodA\":" + SET_PROFILE + "," + "\"ClassB.methodA\":" + SET_PROFILE
                 + "," + "\"ClassA.methodB\":" + SET_PROFILE + "}}"),
             null);
         JSONObject jo = rs.toJSONObject();
-        rs = new MOResourceScheduler<MethodResourceDescription>(worker, jo, null);
+        rs = new MOResourceScheduler<MethodResourceDescription>(worker, null, jo, null);
         for (CoreElement ce : CoreManager.getAllCores()) {
             List<Implementation> impls = ce.getImplementations();
             for (Implementation impl : impls) {
