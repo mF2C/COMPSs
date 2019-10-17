@@ -337,6 +337,7 @@ public class RESTAgent implements AgentInterface<RESTAgentConf> {
     @Consumes(MediaType.APPLICATION_XML)
     public Response endApplication(EndApplicationNotification notification) {
         String jobId = notification.getJobId();
+        System.out.println("Received end application for job " + jobId);
         JobEndStatus endStatus = notification.getEndStatus();
         DataType[] resultTypes = notification.getParamTypes();
         String[] resultLocations = notification.getParamLocations();

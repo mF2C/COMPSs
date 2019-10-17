@@ -137,6 +137,7 @@ public class AppTaskMonitor extends AppMonitor {
         if (this.orchestrator != null) {
             String masterId = this.orchestrator.getHost();
             String operation = this.orchestrator.getOperation();
+            System.out.println("Notifying job end (" + operation + ") to " + masterId);
             WebTarget target = CLIENT.target(masterId);
             WebTarget wt = target.path(operation);
             EndApplicationNotification ean = new EndApplicationNotification("" + getAppId(),
